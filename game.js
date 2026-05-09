@@ -3,6 +3,14 @@
 // Local 2-player football game
 // =====================================================
 
+// Cache-bust marker: bump GAME_BUILD on every change so we can verify
+// the live site is actually serving the latest game.js. If this string
+// doesn't show up in DevTools console after a refresh, the browser /
+// GitHub Pages CDN is still serving an older cached copy.
+const GAME_BUILD = 'v31-rotate-glb-90 (2026-05-06)';
+console.log(`%c[GAME] build: ${GAME_BUILD}`,
+    'background:#16a34a;color:#000;font-weight:bold;padding:3px 8px;border-radius:3px');
+
 // ----------- state -----------
 const STATE = {
     screen: 'loading',         // loading | launch | setup | coin | playing | over
@@ -32,10 +40,10 @@ const COLORS = {
     team2Hot:     0x6da4ff,
     skin:         0xe2c39a,
     keeperBand:   0xf0c14a,
-    skyTop:       0x05070d,
-    skyMid:       0x111935,
-    skyBottom:    0x223060,
-    fogColor:     0x05070d,
+    skyTop:       0x000000,
+    skyMid:       0x040406,
+    skyBottom:    0x000000,
+    fogColor:     0x000000,
 };
 
 // ----------- field constants -----------
@@ -93,17 +101,6 @@ const BALL_SIZE = 1.05;
 //                 zodat een dak/tribune niet voor het speelveld hangt
 const STADIUMS = [
     {
-        id: 'arena-nocturne',
-        name: 'Arena Nocturne',
-        sub: 'HOMETURF · MIDNIGHT',
-        tagline: 'Het hart van Pitch Royale.',
-        file: 'media/models/arena.glb',
-        accent: '#22c55e',
-        capacity: '60.000',
-        mood: 'NACHT',
-        silhouette: 'bowl',
-    },
-    {
         id: 'camp-nou',
         name: 'Camp Nou',
         sub: 'HOME · BLAUGRANA',
@@ -122,13 +119,13 @@ const STADIUMS = [
         colorScale: 0.55,
         offsetY: 0,
         nativePitch: true,
-        pitchBrighten: 1.55,
-        cutawayFrontZ: FIELD_L / 2 + 2,
-        gameplayScale: 1.34,
-        cameraPos: [-78, 92, 78],
+        pitchBrighten: 1.9,
+        cutawayFrontZ: null,
+        gameplayScale: 1.0,
+        cameraPos: [0, 72, 78],
         cameraLookAt: [0, 0, 0],
-        cameraFov: 46,
-        cameraCutaway: true,
+        cameraFov: 58,
+        cameraCutaway: false,
     },
     {
         id: 'old-trafford',
@@ -145,12 +142,93 @@ const STADIUMS = [
         colorScale: 0.55,
         offsetY: 0,
         nativePitch: true,
-        pitchBrighten: 1.55,
+        pitchBrighten: 1.9,
+        cutawayFrontZ: null,
+        gameplayScale: 1.0,
+        // Old Trafford GLB's pitch ends up offset ~15 units to the right of
+        // world origin after auto-fit, so we shift the broadcast cam left to
+        // re-frame: pitch lands centered, both goals stay in view.
+        cameraPos: [-15, 72, 78],
+        cameraLookAt: [-15, 0, 0],
+        cameraFov: 58,
+        cameraCutaway: false,
+    },
+    // Anfield tijdelijk uit de catalogus gehaald — uncomment om weer aan te zetten.
+    // {
+    //     id: 'anfield',
+    //     name: 'Anfield',
+    //     sub: 'HOME · THE KOP',
+    //     tagline: "You'll Never Walk Alone.",
+    //     file: 'media/models/stadiums/ANFIELD STADIUM.glb',
+    //     accent: '#c8102e',
+    //     capacity: '54.074',
+    //     mood: 'NACHT',
+    //     silhouette: 'classic',
+    //     // same pipeline as Camp Nou / Old Trafford: native imported pitch,
+    //     // dimmed stands, no front-mesh cutaway.
+    //     scaleMul: 0.78,
+    //     colorScale: 0.55,
+    //     offsetY: 0,
+    //     nativePitch: true,
+    //     pitchBrighten: 1.9,
+    //     cutawayFrontZ: null,
+    //     gameplayScale: 1.0,
+    //     cameraPos: [0, 72, 78],
+    //     cameraLookAt: [0, 0, 0],
+    //     cameraFov: 58,
+    //     cameraCutaway: false,
+    // },
+    {
+        id: 'etihad',
+        name: 'Etihad Stadium',
+        sub: 'HOME · CITIZENS',
+        tagline: 'Welcome to the new home of City.',
+        file: 'media/models/stadiums/ETIHAD STADIUM.glb',
+        accent: '#6cabdd',
+        capacity: '53.400',
+        mood: 'AVOND',
+        silhouette: 'bowl',
+        // v26 — terug naar `nativePitch: true`: gebruik de écht Etihad-pitch
+        // (mét "ETIHAD" tekst en eigen doelen die in de GLB zitten gebakken)
+        // als speelveld i.p.v. onze procedurale gestreepte plaat.  In 8.png
+        // werd de procedurale pitch op y=0 gerenderd ÓNDER de Etihad-pitch
+        // (die zit op y≈15-20 in de GLB) — twee velden boven elkaar, spelers
+        // op de verkeerde.  findGLBPitchBox + v22's soepele fallback +
+        // nieuwe "grootste-platte-mesh" laatste-redmiddel fallback zorgen
+        // ervoor dat de Etihad-pitch wél gedetecteerd wordt en step-3 zijn
+        // bovenkant op y=0 plaatst — spelers staan dan ÓP het Etihad-veld.
+        scaleMul: 0.78,
+        colorScale: 0.55,
+        offsetY: 0,
+        nativePitch: true,
+        pitchBrighten: 1.9,
         cutawayFrontZ: FIELD_L / 2 + 2,
-        gameplayScale: 1.32,
-        cameraPos: [-78, 92, 78],
+        // gameplayScale terug naar 1.0 — boost was nodig in v29/v30 omdat de
+        // GLB-pitch verkeerd geörienteerd was; step-2 schaalde verkeerde as
+        // → zichtbaar gras werd te smal in x → spelers extended off-pitch.
+        // Met rotateY (zie hieronder) klopt step-2 nu vanzelf.
+        gameplayScale: 1.0,
+        // visualPlayerScale fixes a structural mismatch:
+        // PLAYER_SIZE (3.4) / FIELD_W (110) = 3.1%, but real FIFA-broadcast
+        // ratio (3.png) is ~1.5%. Scaling the player GROUP visually (mesh
+        // transforms only, geen gameplay/collision change) brengt de
+        // on-screen ratio in de 3.png-buurt: 0.55 × 3.1% ≈ 1.7%.
+        visualPlayerScale: 0.55,
+        // 90° rotatie — DE belangrijkste fix.  De Etihad GLB heeft zijn
+        // pitch met de lange as langs z (doel-tot-doel = z), korte langs x.
+        // Onze gameplay verwacht het omgekeerd (FIELD_W langs x, FIELD_L
+        // langs z).  Zonder rotatie zat de camera op [0, 25, 70] = z=70
+        // voorbij de korte as = ACHTER een GLB-doel in plaats van langs de
+        // sideline (zie 4.png — pitch foreshortens dramatisch in de verte
+        // omdat we langs de lengte kijken).  rotateY(π/2) draait de GLB 90°
+        // zodat z↔x verwisselen → step-2 correction wordt min(115/110,
+        // 73/68) = 1.045 → visible pitch 115×71 ≈ FIELD_W × FIELD_L → camera
+        // op z=70 staat nu écht voorbij de sideline → beide doelen
+        // zichtbaar aan canvas links/rechts (3.png-stijl).
+        rotateY: Math.PI / 2,
+        cameraPos: [0, 25, 70],
         cameraLookAt: [0, 0, 0],
-        cameraFov: 46,
+        cameraFov: 55,
         cameraCutaway: true,
     },
     // ↓ Voeg hier nieuwe stadions toe ↓
@@ -184,16 +262,22 @@ function showScreen(id) {
 }
 
 // History-API navigation. Each forward call pushes a state so the browser
-// back button can walk back through screens.
+// back button can walk back through screens. We deliberately do NOT change
+// the URL — passing '' to {push,replace}State keeps the URL clean (no
+// '#screen' fragment) while still recording a navigation entry that
+// popstate can read via e.state.screen.
 function gotoScreen(target, { replace = false } = {}) {
     if (STATE.screen === 'playing' && target !== 'playing') teardownGame();
     if (STATE.screen === 'stadium' && target !== 'stadium') { STADIUM_PREVIEW?.detach(); stopTimecode(); }
     STATE.screen = target;
     showScreen(SCREEN_TO_DOM[target] || (target + '-screen'));
     const stateObj = { screen: target };
-    const url = '#' + target;
-    if (replace) history.replaceState(stateObj, '', url);
-    else         history.pushState(stateObj, '', url);
+    // Explicitly pass the path-without-hash so Chrome strips an existing
+    // '#launch' / '#game' fragment instead of preserving it (the empty-string
+    // shortcut keeps the base URL's fragment).
+    const cleanUrl = location.pathname + location.search;
+    if (replace) history.replaceState(stateObj, '', cleanUrl);
+    else         history.pushState(stateObj, '', cleanUrl);
 }
 
 function navigateToFromPopState(target) {
@@ -227,8 +311,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }, 2200);
 
-    // initial history entry so popstate has somewhere to land
-    history.replaceState({ screen: 'loading' }, '', '');
+    // initial history entry so popstate has somewhere to land — also actively
+    // strips any '#launch' / '#game' fragment the user may have arrived with
+    // (bookmark, hand-typed URL, or the previous hash-based version of the app).
+    history.replaceState({ screen: 'loading' }, '', location.pathname + location.search);
 
     // browser back / forward → navigate to the recorded screen
     window.addEventListener('popstate', (e) => {
@@ -1097,8 +1183,18 @@ function initThree() {
         // cap pixel ratio harder — Retina at 2× quadruples GPU work for marginal gain
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        // Real-time shadows are intentionally OFF. With them on, the corner
+        // spotlight projects player + stadium-mesh silhouettes onto the pitch
+        // at a low angle, and from the gameplay camera those projections read
+        // as fighter-jet outlines on the grass (verified empirically: turning
+        // shadowMap on/off flips them on/off). We compensate with a flat dark
+        // round shadow blob mounted under each player in makePlayer().
+        renderer.shadowMap.enabled = false;
+        // Per-material clipping planes (used by stadiums with cameraCutaway:true,
+        // e.g., Etihad — see buildStadium where we install a world-space plane
+        // in front of the camera-side stand to slice through wrap-around roof
+        // meshes that mesh-level visibility toggles can't hide).
+        renderer.localClippingEnabled = true;
         renderer.outputEncoding = THREE.sRGBEncoding;
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
         renderer.toneMappingExposure = 1.05;
@@ -1131,7 +1227,7 @@ function initThree() {
     buildLights();
     buildField();
     buildGoals();
-    buildStadium();        // imports media/models/arena.glb
+    buildStadium();        // imports the .glb of the selected stadium
     buildPlayers();
     buildBall();
     positionForKickoff();
@@ -1194,14 +1290,14 @@ function buildSky() {
 }
 
 function buildLights() {
-    scene.add(new THREE.AmbientLight(0x4a557a, 0.45));
+    scene.add(new THREE.AmbientLight(0x3a3a3a, 0.45));
 
-    // hemisphere wash — sky tint above, deep ground below
-    const hemi = new THREE.HemisphereLight(0x6f7fb8, 0x10141f, 0.55);
+    // hemisphere wash — neutral above, deep ground below (no blue night-tint)
+    const hemi = new THREE.HemisphereLight(0x5a5a5a, 0x0a0a0a, 0.55);
     scene.add(hemi);
 
-    // primary directional fill (replaces the harsher key)
-    const fill = new THREE.DirectionalLight(0xc8d2ee, 0.35);
+    // primary directional fill (replaces the harsher key) — warm white, no blue
+    const fill = new THREE.DirectionalLight(0xeae0c8, 0.35);
     fill.position.set(0, 120, 30);
     scene.add(fill);
 
@@ -1282,6 +1378,15 @@ function buildField() {
         shadowPlane.position.y = 0.02;
         shadowPlane.receiveShadow = true;
         scene.add(shadowPlane);
+
+        // dark concrete plane far outside the stadium so any gap in the import
+        // (cutaways, missing back wall) reads as ground instead of black void
+        const outerGeo = new THREE.PlaneGeometry(2000, 2000);
+        const outerMat = new THREE.MeshStandardMaterial({ color: 0x05060a, roughness: 1.0, metalness: 0.0 });
+        const outer = new THREE.Mesh(outerGeo, outerMat);
+        outer.rotation.x = -Math.PI / 2;
+        outer.position.y = -0.6;
+        scene.add(outer);
         return;
     }
 
@@ -1437,6 +1542,7 @@ function buildStadium() {
     const rotateY    = stadium.rotateY    ?? 0;          // radians, useful when pitch is rotated 90°
     const sinkY      = stadium.sinkY      ?? 0;          // lower imports below our gameplay field
     const fieldCutout = stadium.fieldCutout === true;    // hide imported pitch/flat centre meshes
+    const pitchBlur = stadium.pitchBlur ?? 0;            // CSS-blur radius (px) applied to GLB pitch textures
     const cutawayFrontZ = stadium.cutawayFrontZ ?? null; // hide near-side GLB pieces in camera corridor
     const nativePitch = stadium.nativePitch === true;    // use the GLB's own pitch (no dimming)
     const pitchBrighten = stadium.pitchBrighten ?? 1.0;  // extra multiplier on pitch base color
@@ -1467,6 +1573,19 @@ function buildStadium() {
             // and goals end up as figurines floating in the middle of a much
             // larger imported pitch.
             let pitchBox = nativePitch ? findGLBPitchBox(arena) : null;
+            // Last-resort fallback: if both strict + relaxed passes failed,
+            // pick the LARGEST flat-low mesh in the lower 50% of the model
+            // and treat IT as the pitch. Pure geometry — no offCenter / ratio
+            // gates, just "biggest grass-shaped slab near the floor". This
+            // catches stadiums (Etihad's solar-canopy bbox skew, etc.) where
+            // the heuristic gates all reject the real pitch.
+            if (nativePitch && !pitchBox) {
+                pitchBox = findLargestFlatLowMesh(arena);
+                if (pitchBox) {
+                    const sz = pitchBox.getSize(new THREE.Vector3());
+                    console.log(`[pitch-largest] ${stadium.id}: using largest-flat-low fallback, size ${sz.x.toFixed(1)}x${sz.y.toFixed(1)}x${sz.z.toFixed(1)}`);
+                }
+            }
             if (pitchBox) {
                 const ps = pitchBox.getSize(new THREE.Vector3());
                 const targetPitchW = FIELD_W * 1.05;
@@ -1500,9 +1619,110 @@ function buildStadium() {
                 arena.position.multiplyScalar(gameplayScale);
             }
 
+            // CRITICAL: refresh world matrices before any setFromObject() call
+            // in the traverse. We just changed arena.position above, and without
+            // this every Box3 we compute uses stale matrixWorld -> meshes appear
+            // at the wrong y/x/z and fail the "low/flat/near-pitch" predicates.
+            arena.updateMatrixWorld(true);
+
+            // Safety net for nativePitch — even after y-tiebreak picks the
+            // upper of two similar candidates, a fundering or below-grass
+            // slab can still slip through and place the visible Etihad
+            // grass several units above world y=0, leaving the players
+            // buried (10.png — pitch markings clean, no figures visible).
+            // We raycast straight down from y=200 at the pitch centre and
+            // sample 8 surrounding spots; the median hit y is the true
+            // pitch surface. If it's significantly above 0, lower the
+            // arena so the grass lands at y=0 — players walk on top.
+            if (nativePitch) {
+                const probes = [
+                    [0, 0], [10, 10], [-10, -10], [10, -10], [-10, 10],
+                    [25, 0], [-25, 0], [0, 15], [0, -15],
+                ];
+                const hitsY = [];
+                const ray = new THREE.Raycaster();
+                ray.firstHitOnly = false;
+                for (const [px, pz] of probes) {
+                    ray.set(new THREE.Vector3(px, 200, pz), new THREE.Vector3(0, -1, 0));
+                    const intersections = ray.intersectObject(arena, true);
+                    // Take the LOWEST hit at this xz — the highest hit is
+                    // typically the roof; pitch is the lowest visible
+                    // surface from above (everything below pitch is
+                    // covered by the pitch mesh).
+                    if (intersections.length) {
+                        // sort hits by y ascending — pick the lowest above
+                        // the floor (>-1) and below typical roof height (<25)
+                        const valid = intersections
+                            .map(h => h.point.y)
+                            .filter(y => y > -2 && y < 25)
+                            .sort((a, b) => a - b);
+                        if (valid.length) hitsY.push(valid[0]);
+                    }
+                }
+                if (hitsY.length >= 5) {
+                    hitsY.sort((a, b) => a - b);
+                    const medianY = hitsY[Math.floor(hitsY.length / 2)];
+                    if (Math.abs(medianY) > 0.4) {
+                        console.log(`[pitch-correction] ${stadium.id}: visible pitch surface measured at y=${medianY.toFixed(2)} via raycast (${hitsY.length} hits) — lowering arena by that amount so grass lands at y=0`);
+                        arena.position.y -= medianY;
+                        arena.updateMatrixWorld(true);
+                    } else {
+                        console.log(`[pitch-correction] ${stadium.id}: visible pitch surface @ y=${medianY.toFixed(2)} — within tolerance, no correction needed`);
+                    }
+                } else {
+                    console.log(`[pitch-correction] ${stadium.id}: only ${hitsY.length}/9 raycast hits — skipping (probably hit the void or roof only)`);
+                }
+            }
+
+            let _pitchMeshHits = 0;
+            const _flatLowMeshes = [];
+            const _allMeshes = [];
+            // Shared across the traverse so we don't dark-lift the same diffuse
+            // texture twice when multiple meshes share a material.
+            const _processedMaps = new WeakSet();
             arena.traverse((c) => {
                 if (!c.isMesh) return;
                 const isPitchMesh = looksLikePitchMesh(c);
+                if (isPitchMesh) _pitchMeshHits++;
+                // collect every flat-low candidate so we can report what we
+                // saw if the dark-lift didn't fire on the right mesh, AND so
+                // we know which meshes to apply the (safe, green-gated) lift to
+                let isFlatLowCandidate = false;
+                if (nativePitch) {
+                    const b = new THREE.Box3().setFromObject(c);
+                    if (!b.isEmpty()) {
+                        const sz = b.getSize(new THREE.Vector3());
+                        const hasMap = !!(c.material && (Array.isArray(c.material) ? c.material[0]?.map : c.material.map));
+                        // log every mesh with a diffuse map so if detection still
+                        // fails we can pick the pitch out by hand from the dump
+                        if (hasMap) {
+                            _allMeshes.push({
+                                name: c.name || '(unnamed)',
+                                size: { x: +sz.x.toFixed(2), y: +sz.y.toFixed(2), z: +sz.z.toFixed(2) },
+                                yMin: +b.min.y.toFixed(2),
+                                yMax: +b.max.y.toFixed(2),
+                                xCenter: +((b.min.x + b.max.x) / 2).toFixed(2),
+                                zCenter: +((b.min.z + b.max.z) / 2).toFixed(2),
+                                isPitchMesh,
+                            });
+                        }
+                        // Generous flat-low gate: we'd rather catch too much
+                        // (the green-dominance gate inside dark-lift will skip
+                        // non-grass textures anyway) than miss the actual pitch
+                        // because of a slightly weird centering.
+                        if (sz.y < 8 && b.min.y < 30 && Math.max(sz.x, sz.z) > FIELD_W * 0.18) {
+                            isFlatLowCandidate = true;
+                            _flatLowMeshes.push({
+                                name: c.name || '(unnamed)',
+                                isPitchMesh,
+                                size: { x: +sz.x.toFixed(2), y: +sz.y.toFixed(2), z: +sz.z.toFixed(2) },
+                                yMin: +b.min.y.toFixed(2),
+                                hasMap,
+                                transparent: Array.isArray(c.material) ? c.material[0]?.transparent : c.material?.transparent,
+                            });
+                        }
+                    }
+                }
 
                 // hide unwanted meshes:
                 //  - if fieldCutout is on (legacy: replace GLB pitch with our own)
@@ -1516,6 +1736,26 @@ function buildStadium() {
                     c.visible = false;
                     return;
                 }
+
+                // Shadow-decal detection: a flat-low mesh whose texture has
+                // both clearly-dark patches AND clearly-bright background is
+                // the airplane/roof overlay (works whether the mesh is
+                // transparent OR opaque — Old Trafford's airplane mesh is
+                // opaque with a sand-colored BG, and was previously skipped by
+                // the transparency-only check). Real grass meshes are mid-
+                // luminance everywhere → they fail this signature → preserved.
+                if (nativePitch && isFlatLowCandidate) {
+                    const matRef = Array.isArray(c.material) ? c.material[0] : c.material;
+                    if (matRef && matRef.map) {
+                        const cls = classifyOverlayTexture(matRef.map, `${stadium.id}:${c.name || 'unnamed'}`);
+                        if (cls.ok && cls.isShadowDecal) {
+                            console.log(`[overlay] HIDING shadow-decal mesh "${c.name || 'unnamed'}"`);
+                            c.visible = false;
+                            return;
+                        }
+                    }
+                }
+
                 c.receiveShadow = true;
                 c.castShadow = false;
                 if (!c.material) return;
@@ -1526,20 +1766,120 @@ function buildStadium() {
                     if (m.emissive && m.emissiveIntensity > 1) m.emissiveIntensity = 0.4;
                     if (m.metalness !== undefined) m.metalness = Math.min(0.4, m.metalness);
 
-                    // when the imported pitch IS the gameplay surface, keep it
-                    // bright (skip the night-tint dimming that's meant for the
-                    // stands) and optionally boost it a little so the grass pops.
-                    if (nativePitch && isPitchMesh) {
+                    const isOfficialPitch = nativePitch && isPitchMesh;
+                    // Treat ANY flat-low candidate as a pitch material for the
+                    // "kill baked daylight shadows" pass. The strict
+                    // looksLikePitchMesh test misses Old Trafford's pitch (0
+                    // hits in console), so the lightmap + AO + emissive zeros
+                    // never fired and roof-shadow silhouettes survived. This
+                    // bypass guarantees the channels get switched off on the
+                    // actual grass mesh, regardless of how oddly it's shaped.
+                    const isPitchLike = isOfficialPitch || (nativePitch && isFlatLowCandidate);
+
+                    if (isPitchLike) {
                         if (pitchBrighten !== 1.0 && m.color) m.color.multiplyScalar(pitchBrighten);
                         m.roughness = Math.max(0.85, m.roughness ?? 1);
-                        return;
+                        // kill baked-in daylight shadows (lightmap + AO + emissive)
+                        // — this is what was missing for Old Trafford. Roof &
+                        // catwalk shadows are typically baked into the lightmap
+                        // channel of the pitch material, NOT the diffuse map, so
+                        // no amount of pixel-tweaking on m.map could remove them.
+                        const beforeLM = m.lightMapIntensity;
+                        const beforeAO = m.aoMapIntensity;
+                        const beforeEM = m.emissiveIntensity;
+                        if (m.lightMap) m.lightMapIntensity = 0;
+                        if (m.aoMap) m.aoMapIntensity = 0;
+                        if (m.emissive) m.emissiveIntensity = 0;
+                        m.needsUpdate = true;
+                        console.log(`[pitch-channels] ${stadium.id}:${c.name || 'unnamed'}: lightMap=${!!m.lightMap}(${beforeLM}→0) aoMap=${!!m.aoMap}(${beforeAO}→0) emissive=${beforeEM}→0`);
                     }
+
+                    // v15: REPLACE the diffuse map outright with our procedural
+                    // stripe texture. Pixel-level dark-lift (v9) and spatial
+                    // blob-killing (v11) both failed because the airplane
+                    // silhouettes baked into Old Trafford's GLB pitch share
+                    // the exact dark-green colour of the natural mowing
+                    // stripes — no colour, channel, or shape filter could
+                    // separate them. Replacing the entire map is the only
+                    // remaining option that's guaranteed to remove them.
+                    // Heavy gaussian blur on the pitch's diffuse texture.
+                    // This smears the baked airplane-shaped shadows into the
+                    // surrounding grass without breaking the GLB's per-mesh
+                    // UV mapping (which is what wrecked v15's stripe replace).
+                    // Mowing stripes are large continuous bands so they
+                    // soften but stay readable; airplane silhouettes are
+                    // bordered on all sides by green grass and dissolve into
+                    // it under enough blur radius.
+                    if (isPitchLike && pitchBlur > 0 && m.map && !_processedMaps.has(m.map)) {
+                        _processedMaps.add(m.map);
+                        const blurred = blurPitchTexture(m.map, pitchBlur, `${stadium.id}:${c.name || 'unnamed'}`);
+                        if (blurred) {
+                            _processedMaps.add(blurred);
+                            m.map = blurred;
+                            m.needsUpdate = true;
+                        }
+                    }
+
+                    if (isPitchLike) return;
 
                     // dim stands / roof / signage to match our night atmosphere
                     if (m.emissive && colorScale < 1) m.emissive.multiplyScalar(colorScale);
                     if (colorScale < 1 && m.color) m.color.multiplyScalar(colorScale);
                 });
             });
+
+            if (nativePitch) {
+                console.log(`[pitch] ${stadium.id}: ${_pitchMeshHits} mesh(es) passed looksLikePitchMesh(), ${_flatLowMeshes.length} flat-low candidate(s), ${_allMeshes.length} mesh(es) with diffuse map`);
+                if (_flatLowMeshes.length) {
+                    console.log(`[pitch] ${stadium.id}: flat-low candidates:`, _flatLowMeshes);
+                }
+                if (_allMeshes.length) {
+                    // sort by area (x*z) descending — pitch is typically among the
+                    // largest mapped meshes, so it'll be near the top of this list
+                    _allMeshes.sort((a, b) => (b.size.x * b.size.z) - (a.size.x * a.size.z));
+                    console.log(`[pitch] ${stadium.id}: top 12 mapped meshes by footprint:`, _allMeshes.slice(0, 12));
+                }
+            }
+
+            // World-space clipping plane for stadiums whose roof/canopy mesh
+            // wraps around BOTH sides — shouldHideCameraSideMesh checks mesh
+            // center.z and shouldHideImportedFrontMesh checks box.min.z, but a
+            // single mesh that spans z=[-60..+60] (Etihad's solar-panel
+            // canopy) has center.z = 0 and min.z = -60 → fails both gates,
+            // even though half the mesh sits between the camera and the
+            // pitch. A clip plane slices through the world geometry, so the
+            // half on the camera side disappears regardless of mesh boundaries.
+            if (stadium.cameraCutaway && stadium.cameraPos) {
+                const camPos = new THREE.Vector3(stadium.cameraPos[0], 0, stadium.cameraPos[2]);
+                const lookAt = new THREE.Vector3(
+                    stadium.cameraLookAt?.[0] || 0, 0,
+                    stadium.cameraLookAt?.[2] || 0
+                );
+                const camDir = lookAt.clone().sub(camPos);
+                if (camDir.lengthSq() > 0.001) {
+                    camDir.normalize();
+                    // Plane sits offsetDist on the camera side of lookAt, with its
+                    // normal pointing INTO the pitch (away from camera). Three.js
+                    // clips the side where signedDistance < 0 → that's the camera side.
+                    const offsetDist = FIELD_L * 0.5 + 6;
+                    const planePoint = lookAt.clone().add(camDir.clone().multiplyScalar(-offsetDist));
+                    const clipPlane = new THREE.Plane();
+                    clipPlane.setFromNormalAndCoplanarPoint(camDir, planePoint);
+
+                    let clipped = 0;
+                    arena.traverse((c) => {
+                        if (!c.isMesh || !c.material) return;
+                        const mats = Array.isArray(c.material) ? c.material : [c.material];
+                        mats.forEach((m) => {
+                            m.clippingPlanes = [clipPlane];
+                            m.clipShadows = true;
+                            m.needsUpdate = true;
+                        });
+                        clipped++;
+                    });
+                    console.log(`[cameraCutaway] ${stadium.id}: clip plane @ ${planePoint.x.toFixed(1)},${planePoint.y.toFixed(1)},${planePoint.z.toFixed(1)} normal ${camDir.x.toFixed(2)},${camDir.y.toFixed(2)},${camDir.z.toFixed(2)} — applied to ${clipped} mesh(es)`);
+                }
+            }
 
             arena.userData.tag = 'stadium';
             scene.add(arena);
@@ -1577,45 +1917,63 @@ function findGLBPitchBox(arena) {
     const importCenter = importBbox.getCenter(new THREE.Vector3());
     const importSpan = Math.max(importSize.x, importSize.z) || 1;
 
-    const candidates = [];
-    arena.traverse((c) => {
-        if (!c.isMesh) return;
-        const b = new THREE.Box3().setFromObject(c);
-        if (b.isEmpty()) return;
-        const s = b.getSize(new THREE.Vector3());
-        if (s.x < 20 || s.z < 20) return;
-        if (s.y > Math.max(4, Math.min(s.x, s.z) * 0.08)) return; // not flat
-        const yFromBottom = b.min.y - importBbox.min.y;
-        if (yFromBottom > importHeight * 0.22) return; // not low
+    // Two-pass collector: strict thresholds first (so well-formed GLBs like
+    // Camp Nou / Old Trafford keep behaving exactly as before), then a relaxed
+    // pass for outliers like Etihad whose pitch fails offCenter/yFromBottom
+    // (rooftop solar panels skew the bbox so the pitch ends up "high" and
+    // off-centre relative to the bbox-based reference frame).
+    const collect = ({ maxOff, maxYFrac, maxRatio, label }) => {
+        const out = [];
+        arena.traverse((c) => {
+            if (!c.isMesh) return;
+            const b = new THREE.Box3().setFromObject(c);
+            if (b.isEmpty()) return;
+            const s = b.getSize(new THREE.Vector3());
+            if (s.x < 20 || s.z < 20) return;
+            if (s.y > Math.max(4, Math.min(s.x, s.z) * 0.08)) return; // not flat
+            const yFromBottom = b.min.y - importBbox.min.y;
+            if (yFromBottom > importHeight * maxYFrac) return; // not low
 
-        const longer  = Math.max(s.x, s.z);
-        const shorter = Math.min(s.x, s.z);
-        const ratio   = longer / shorter;
-        // football pitches sit between 1.0 and 1.7 — aggressively reject
-        // square parking surfaces and elongated walkways
-        if (ratio > 1.95) return;
+            const longer  = Math.max(s.x, s.z);
+            const shorter = Math.min(s.x, s.z);
+            const ratio   = longer / shorter;
+            if (ratio > maxRatio) return;
 
-        const center = b.getCenter(new THREE.Vector3());
-        const offX = (center.x - importCenter.x) / importSize.x;
-        const offZ = (center.z - importCenter.z) / importSize.z;
-        const offCenter = Math.hypot(offX, offZ);
-        // anything wildly off-centre is almost certainly not the pitch
-        if (offCenter > 0.20) return;
+            const center = b.getCenter(new THREE.Vector3());
+            const offX = (center.x - importCenter.x) / importSize.x;
+            const offZ = (center.z - importCenter.z) / importSize.z;
+            const offCenter = Math.hypot(offX, offZ);
+            if (offCenter > maxOff) return;
 
-        const namedAsPitch = /(^|[_\s\-/])(pitch|field|grass|turf)([_\s\-/]|$)/i.test(c.name || '');
-        // size relative to the whole stadium — pitches are usually 30–55% of
-        // the stadium's longest axis. Penalise meshes outside that band.
-        const sizeFrac = longer / importSpan;
+            const namedAsPitch = /(^|[_\s\-/])(pitch|field|grass|turf)([_\s\-/]|$)/i.test(c.name || '');
+            const sizeFrac = longer / importSpan;
 
-        let score = 0;
-        score += namedAsPitch ? 0 : 100;          // huge bonus for name match
-        score += Math.abs(ratio - 1.54) * 40;     // football ratio target
-        score += offCenter * 30;                  // central preference
-        score += Math.abs(sizeFrac - 0.42) * 25;  // expected ~42% of stadium span
-        candidates.push({ box: b.clone(), score, namedAsPitch, ratio, sizeFrac });
-    });
+            let score = 0;
+            score += namedAsPitch ? 0 : 100;          // huge bonus for name match
+            score += Math.abs(ratio - 1.54) * 40;     // football ratio target
+            score += offCenter * 30;                  // central preference
+            score += Math.abs(sizeFrac - 0.42) * 25;  // expected ~42% of stadium span
+            out.push({ box: b.clone(), score, namedAsPitch, ratio, sizeFrac, label });
+        });
+        return out;
+    };
 
-    if (!candidates.length) return null;
+    // strict pass — exactly the pre-fallback gate
+    let candidates = collect({ maxOff: 0.20, maxYFrac: 0.22, maxRatio: 1.95, label: 'strict' });
+    // relaxed pass — only used when the strict pass returned nothing. The
+    // scoring still rewards central + football-shaped meshes, so a parking
+    // lot can't hijack the pick from a real pitch.
+    if (!candidates.length) {
+        candidates = collect({ maxOff: 0.40, maxYFrac: 0.50, maxRatio: 2.4, label: 'relaxed' });
+        if (candidates.length) {
+            console.log(`[pitch-fallback] strict pass found 0; relaxed pass found ${candidates.length} candidate(s)`);
+        }
+    }
+
+    if (!candidates.length) {
+        console.log('[findGLBPitchBox] returning null — no candidates passed strict OR relaxed pass');
+        return null;
+    }
 
     // strongest signal: an explicit pitch/field/grass/turf name. If any
     // candidate has it, only consider those — geometry voodoo can't beat a
@@ -1623,7 +1981,89 @@ function findGLBPitchBox(arena) {
     const named = candidates.filter(c => c.namedAsPitch);
     const pool  = named.length ? named : candidates;
     pool.sort((a, b) => a.score - b.score);
-    return pool[0].box.clone();
+    // Y-tiebreak: among candidates within 30 score-points of the best,
+    // prefer the HIGHEST one. This stops a flat foundation slab from being
+    // picked when the actual grass mesh sits a few units on top of it
+    // (Etihad in 10.png — players got buried under a visible pitch that
+    // was higher than the picked "pitch" in world coords).
+    const bestScore = pool[0].score;
+    const closeToBest = pool.filter(c => c.score <= bestScore + 30);
+    closeToBest.sort((a, b) => b.box.min.y - a.box.min.y);
+    const pick = closeToBest[0];
+    const sz = pick.box.getSize(new THREE.Vector3());
+    const ctr = pick.box.getCenter(new THREE.Vector3());
+    console.log(`[findGLBPitchBox] picked (${pick.label}): size=${sz.x.toFixed(1)}x${sz.y.toFixed(1)}x${sz.z.toFixed(1)} center=(${ctr.x.toFixed(1)},${ctr.y.toFixed(1)},${ctr.z.toFixed(1)}) ratio=${pick.ratio.toFixed(2)} score=${pick.score.toFixed(1)} named=${pick.namedAsPitch}`);
+    if (closeToBest.length > 1) {
+        console.log(`[findGLBPitchBox] y-tiebreak considered ${closeToBest.length} similar candidates:`, closeToBest.map(c => ({ score: +c.score.toFixed(1), yMin: +c.box.min.y.toFixed(2), yMax: +c.box.max.y.toFixed(2) })));
+    }
+    return pick.box.clone();
+}
+
+// Last-resort pitch finder — used when both strict and relaxed passes of
+// findGLBPitchBox come up empty.  Scores all flat-low meshes by how
+// pitch-shaped they are (xz-ratio close to 1.55, footprint between 5-35%
+// of the stadium plan, name-as-pitch bonus), so a wide flat parking lot
+// or huge plaza floor mesh can't outrank the actual grass.
+function findLargestFlatLowMesh(arena) {
+    arena.updateMatrixWorld(true);
+    const importBbox = new THREE.Box3().setFromObject(arena);
+    if (importBbox.isEmpty()) return null;
+    const importSize = importBbox.getSize(new THREE.Vector3());
+    const importFootprint = (importSize.x * importSize.z) || 1;
+    const importHeight = Math.max(0.001, importBbox.max.y - importBbox.min.y);
+
+    const candidates = [];
+    arena.traverse((c) => {
+        if (!c.isMesh) return;
+        const b = new THREE.Box3().setFromObject(c);
+        if (b.isEmpty()) return;
+        const s = b.getSize(new THREE.Vector3());
+        if (s.x < 25 || s.z < 25) return;
+        const longer = Math.max(s.x, s.z);
+        const shorter = Math.min(s.x, s.z);
+        if (s.y > longer * 0.15) return; // not flat
+        const yFromBottom = b.min.y - importBbox.min.y;
+        if (yFromBottom > importHeight * 0.65) return; // not low
+        const ratio = longer / shorter;
+        if (ratio > 3.5) return; // way too elongated to be a pitch
+
+        const area = s.x * s.z;
+        const footprintFrac = area / importFootprint;
+        const namedAsPitch = /(^|[_\s\-/])(pitch|field|grass|turf|ground)([_\s\-/]|$)/i.test(c.name || '');
+
+        let score = 0;
+        // football pitch ratio target
+        score += Math.abs(ratio - 1.55) * 35;
+        // pitches typically take 8-30% of stadium plan; penalise outside that band
+        if (footprintFrac < 0.06) score += 90;       // suspiciously small
+        else if (footprintFrac > 0.40) score += 90;  // suspiciously large (plaza/whole floor)
+        else score += Math.abs(footprintFrac - 0.18) * 30; // sweet-spot ~18%
+        // strong bonus if the mesh names itself as a pitch
+        if (namedAsPitch) score -= 250;
+
+        candidates.push({ box: b.clone(), score, area, footprintFrac, ratio, namedAsPitch, name: c.name || '(unnamed)' });
+    });
+
+    if (!candidates.length) {
+        console.log('[findLargestFlatLowMesh] no flat-low candidates at all');
+        return null;
+    }
+    candidates.sort((a, b) => a.score - b.score);
+    // Y-tiebreak: among candidates within 30 score-points of the best,
+    // prefer the highest mesh. Catches the "foundation below the grass"
+    // case where both meshes look pitch-shaped but only the upper one
+    // is the actual playable surface.
+    const bestScore = candidates[0].score;
+    const closeToBest = candidates.filter(c => c.score <= bestScore + 30);
+    closeToBest.sort((a, b) => b.box.min.y - a.box.min.y);
+    const pick = closeToBest[0];
+    const sz = pick.box.getSize(new THREE.Vector3());
+    const ctr = pick.box.getCenter(new THREE.Vector3());
+    console.log(`[findLargestFlatLowMesh] picked "${pick.name}" score=${pick.score.toFixed(0)} ratio=${pick.ratio.toFixed(2)} footprintFrac=${(pick.footprintFrac*100).toFixed(1)}% size=${sz.x.toFixed(1)}x${sz.y.toFixed(1)}x${sz.z.toFixed(1)} center=(${ctr.x.toFixed(1)},${ctr.y.toFixed(1)},${ctr.z.toFixed(1)}) named=${pick.namedAsPitch}`);
+    if (closeToBest.length > 1) {
+        console.log(`[findLargestFlatLowMesh] y-tiebreak considered ${closeToBest.length} similar candidates:`, closeToBest.map(c => ({ name: c.name, score: +c.score.toFixed(0), yMin: +c.box.min.y.toFixed(2), yMax: +c.box.max.y.toFixed(2) })));
+    }
+    return pick.box.clone();
 }
 
 // Detect whether a mesh inside the imported GLB looks like the stadium pitch
@@ -1631,6 +2071,201 @@ function findGLBPitchBox(arena) {
 // a pitch).  Used both to hide the import-pitch when we want our procedural
 // rectangle, and to keep the import-pitch bright when we use it as the
 // gameplay surface.  Assumes the GLB is already recentered around the origin.
+// Inspects the diffuse texture of a flat-low candidate to decide whether it
+// is a "shadow decal" — a plane sitting on/above the pitch with dark
+// airplane/roof-shadow shapes painted on a brighter background. Works for
+// both alpha-blended decals AND opaque meshes whose texture has the same
+// signature (Old Trafford's airplane mesh is opaque with avg RGB
+// (170, 175, 119) — bright sand background, dark airplane silhouettes).
+//
+// Heuristic: a shadow-decal texture has BOTH a substantial dark-pixel
+// population (the airplanes themselves) AND a substantial bright-pixel
+// population (the surrounding background). Genuine grass textures have
+// neither — they're mid-luminance. Line-marking decals have bright pixels
+// but few dark ones, so they survive.
+function classifyOverlayTexture(srcTex, label) {
+    const img = srcTex && srcTex.image;
+    if (!img || !img.width || !img.height) return { ok: false };
+    const w = img.width, h = img.height;
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const ctx = c.getContext('2d');
+    try { ctx.drawImage(img, 0, 0); } catch { return { ok: false }; }
+    let id;
+    try { id = ctx.getImageData(0, 0, w, h); } catch { return { ok: false }; }
+    const data = id.data;
+    const stepX = Math.max(1, (w / 64) | 0);
+    const stepY = Math.max(1, (h / 64) | 0);
+    let visSum = 0, visCount = 0, totalCount = 0, darkCount = 0, brightCount = 0;
+    let sumR = 0, sumG = 0, sumB = 0;
+    for (let y = 0; y < h; y += stepY) {
+        for (let x = 0; x < w; x += stepX) {
+            const i = (y * w + x) * 4;
+            totalCount++;
+            if (data[i + 3] < 128) continue;
+            const r = data[i], g = data[i + 1], b = data[i + 2];
+            sumR += r; sumG += g; sumB += b;
+            const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+            visSum += lum;
+            visCount++;
+            if (lum < 60) darkCount++;
+            else if (lum > 170) brightCount++;
+        }
+    }
+    const visiblePct = visCount / totalCount;
+    const visAvgLum = visCount ? visSum / visCount : 0;
+    const darkPct   = visCount ? darkCount   / visCount : 0;
+    const brightPct = visCount ? brightCount / visCount : 0;
+    const avgR = visCount ? sumR / visCount : 0;
+    const avgG = visCount ? sumG / visCount : 0;
+    const avgB = visCount ? sumB / visCount : 0;
+    const greenLead = avgG - Math.max(avgR, avgB);
+    const isGreenDom = greenLead > 8 && avgG > 25 && avgG < 200;
+
+    // Shadow-decal signature: NOT green-dominant (so it's not a grass mesh)
+    // AND has a meaningful population of dark pixels (the silhouettes). Real
+    // grass meshes have green-dominant averages → preserved + dark-lifted.
+    // Pure-bright meshes (line-marking decals) have darkPct near zero →
+    // preserved untouched.
+    const isShadowDecal = !isGreenDom && darkPct > 0.02 && darkPct < 0.6;
+    console.log(`[overlay] ${label}: avgRGB(${avgR|0},${avgG|0},${avgB|0}) greenLead=${greenLead.toFixed(0)} green=${isGreenDom} lum=${visAvgLum.toFixed(0)} dark=${(darkPct*100).toFixed(1)}% bright=${(brightPct*100).toFixed(1)}% → shadowDecal=${isShadowDecal}`);
+    return { ok: true, isShadowDecal, isGreenDom, visAvgLum, visiblePct, darkPct, brightPct };
+}
+
+// Returns a fresh CanvasTexture that is the source texture passed through a
+// canvas blur(Npx) filter. Used to smear baked dark "airplane" shapes into
+// the surrounding grass while leaving the GLB's UV transform intact.
+function blurPitchTexture(srcTex, radiusPx, label) {
+    const img = srcTex && srcTex.image;
+    if (!img || !img.width || !img.height) return null;
+    const w = img.width, h = img.height;
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const ctx = c.getContext('2d');
+    try {
+        // Three passes of the canvas filter approximate a stronger gaussian,
+        // which is what we need to fully dissolve the airplane silhouettes
+        // (a single pass at radius 12 leaves visible "ghost" outlines).
+        ctx.filter = `blur(${radiusPx}px)`;
+        ctx.drawImage(img, 0, 0);
+        ctx.drawImage(c, 0, 0);
+        ctx.drawImage(c, 0, 0);
+        ctx.filter = 'none';
+    } catch (e) {
+        console.warn(`[pitch-blur] ${label}: drawImage/filter failed`, e);
+        return null;
+    }
+    console.log(`[pitch-blur] ${label}: applied blur(${radiusPx}px) ×3 to ${w}×${h} texture`);
+    const tex = new THREE.CanvasTexture(c);
+    tex.wrapS = srcTex.wrapS;
+    tex.wrapT = srcTex.wrapT;
+    if (srcTex.repeat) tex.repeat.copy(srcTex.repeat);
+    if (srcTex.offset) tex.offset.copy(srcTex.offset);
+    if (srcTex.center && tex.center) tex.center.copy(srcTex.center);
+    tex.rotation = srcTex.rotation || 0;
+    tex.encoding = srcTex.encoding;
+    tex.flipY = srcTex.flipY;
+    tex.anisotropy = srcTex.anisotropy;
+    tex.minFilter = srcTex.minFilter;
+    tex.magFilter = srcTex.magFilter;
+    tex.needsUpdate = true;
+    return tex;
+}
+
+// One-shot CPU pixel pass on the pitch's diffuse texture: any pixel whose
+// brightest channel is below `threshold` (0-255) is blended toward grass-green
+// by `lift` (0-1). Used to fade out roof/structure shadow shapes that the
+// stadium GLB had baked into the pitch's base color map at daylight render
+// time. Returns a fresh CanvasTexture the material can swap in for `m.map`,
+// or null if the source image isn't readable yet (e.g. CORS-tainted).
+function liftDarkPatchesTexture(srcTex, threshold, lift, stadiumId) {
+    const img = srcTex && srcTex.image;
+    if (!img || !img.width || !img.height) {
+        console.warn(`[pitch] ${stadiumId}: pitch texture has no readable image yet`, srcTex);
+        return null;
+    }
+    const w = img.width, h = img.height;
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const ctx = c.getContext('2d');
+    try {
+        ctx.drawImage(img, 0, 0);
+    } catch (e) {
+        console.warn(`[pitch] ${stadiumId}: drawImage failed`, e);
+        return null;
+    }
+    let id;
+    try {
+        id = ctx.getImageData(0, 0, w, h);
+    } catch (e) {
+        console.warn(`[pitch] ${stadiumId}: getImageData failed (CORS?)`, e);
+        return null;
+    }
+    const data = id.data;
+
+    // Quick green-dominance sanity check on a 32×32 grid spanning the whole
+    // texture, so we can safely run dark-lift on *any* flat-low mesh without
+    // wrecking non-grass textures (concrete, wood, signage). If the texture
+    // isn't grass-dominant, bail and leave the original m.map alone.
+    {
+        let sumR = 0, sumG = 0, sumB = 0, samples = 0;
+        const stepX = Math.max(1, (w / 32) | 0);
+        const stepY = Math.max(1, (h / 32) | 0);
+        for (let y = 0; y < h; y += stepY) {
+            for (let x = 0; x < w; x += stepX) {
+                const i = (y * w + x) * 4;
+                sumR += data[i]; sumG += data[i + 1]; sumB += data[i + 2];
+                samples++;
+            }
+        }
+        const avgR = sumR / samples, avgG = sumG / samples, avgB = sumB / samples;
+        const greenLead = avgG - Math.max(avgR, avgB);
+        const isGrass = greenLead > 8 && avgG > 25 && avgG < 200;
+        console.log(`[pitch] ${stadiumId}: avg RGB (${avgR | 0}, ${avgG | 0}, ${avgB | 0}) → grass=${isGrass}`);
+        if (!isGrass) return null;
+    }
+
+    // Conservative chromaticity lift: only gray-dark pixels (achromatic
+    // baked roof shadows) get nudged toward grass. Dark green stripes are
+    // preserved. This is back to the v9 behaviour after v11's blob-killer
+    // turned out to flatten the entire pitch into a uniform dark green
+    // (because the airplane "silhouettes" weren't in the texture at all —
+    // they were real-time player shadows from the corner spotlight).
+    const grass = [40, 76, 30];
+    const grayMaxDelta = 25;
+    let liftedCount = 0, skippedAsGreen = 0;
+    for (let i = 0; i < data.length; i += 4) {
+        const r = data[i], g = data[i + 1], b = data[i + 2];
+        const maxChan = r > g ? (r > b ? r : b) : (g > b ? g : b);
+        if (maxChan >= threshold) continue;
+        const minChan = r < g ? (r < b ? r : b) : (g < b ? g : b);
+        if (maxChan - minChan > grayMaxDelta) { skippedAsGreen++; continue; }
+        const t = 1 - (maxChan / threshold);
+        const a = Math.min(1, t * lift);
+        data[i]     = r + (grass[0] - r) * a;
+        data[i + 1] = g + (grass[1] - g) * a;
+        data[i + 2] = b + (grass[2] - b) * a;
+        liftedCount++;
+    }
+    ctx.putImageData(id, 0, 0);
+    console.log(`[pitch] ${stadiumId}: lifted ${liftedCount} gray-dark pixels, skipped ${skippedAsGreen} chromatic-dark pixels (threshold ${threshold}, lift ${lift})`);
+
+    const tex = new THREE.CanvasTexture(c);
+    tex.wrapS = srcTex.wrapS;
+    tex.wrapT = srcTex.wrapT;
+    tex.repeat.copy(srcTex.repeat);
+    tex.offset.copy(srcTex.offset);
+    if (srcTex.center && tex.center) tex.center.copy(srcTex.center);
+    tex.rotation = srcTex.rotation || 0;
+    tex.encoding = srcTex.encoding;
+    tex.flipY = srcTex.flipY;
+    tex.anisotropy = srcTex.anisotropy;
+    tex.minFilter = srcTex.minFilter;
+    tex.magFilter = srcTex.magFilter;
+    tex.needsUpdate = true;
+    return tex;
+}
+
 function looksLikePitchMesh(mesh) {
     const box = new THREE.Box3().setFromObject(mesh);
     if (box.isEmpty()) return false;
@@ -1713,7 +2348,7 @@ function buildStadiumFallback() {
     // a low concrete bowl + tribunes silhouette so the world doesn't feel empty
     const bowlGeo = new THREE.RingGeometry(FIELD_W * 0.85, FIELD_W * 1.6, 64, 1);
     const bowlMat = new THREE.MeshStandardMaterial({
-        color: 0x171b2c,
+        color: 0x0a0a0a,
         roughness: 1.0,
         metalness: 0.0,
     });
@@ -1726,7 +2361,7 @@ function buildStadiumFallback() {
     // tribune silhouette as a low torus
     const tribGeo = new THREE.TorusGeometry(FIELD_W * 1.25, 8, 8, 80);
     const tribMat = new THREE.MeshStandardMaterial({
-        color: 0x0d1020,
+        color: 0x080808,
         roughness: 1.0,
         metalness: 0.0,
         flatShading: true,
@@ -1738,7 +2373,7 @@ function buildStadiumFallback() {
     scene.add(tribune);
 
     // four light pylons at the corners
-    const pylonMat = new THREE.MeshStandardMaterial({ color: 0x1a2240, metalness: 0.5, roughness: 0.6 });
+    const pylonMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.5, roughness: 0.6 });
     const pylonGeo = new THREE.CylinderGeometry(0.6, 0.9, 60, 8);
     [
         [ FIELD_W * 0.85,  FIELD_L * 0.95],
@@ -1781,7 +2416,11 @@ function makePlayer(color, isKeeper, controlled) {
         bodyMat
     );
     body.position.y = PLAYER_SIZE/2;
-    body.castShadow = true;
+    // No real-time cast shadow — the cylinder + sphere silhouette projected
+    // by the corner spotlight produces an elongated capsule-with-cap shape
+    // that, viewed from the gameplay camera, reads as a fighter-jet outline
+    // on the pitch. We replace it with a simple round dark blob below.
+    body.castShadow = false;
     group.add(body);
 
     const headMat = new THREE.MeshStandardMaterial({ color: COLORS.skin, roughness: 0.6, metalness: 0.05 });
@@ -1790,8 +2429,19 @@ function makePlayer(color, isKeeper, controlled) {
         headMat
     );
     head.position.y = PLAYER_SIZE + PLAYER_SIZE * 0.32;
-    head.castShadow = true;
+    head.castShadow = false;
     group.add(head);
+
+    // Fake under-foot shadow blob — replaces the real cast shadow. Stays
+    // round regardless of camera angle and reads cleanly as a footprint
+    // rather than as an aircraft silhouette.
+    const shadowBlob = new THREE.Mesh(
+        new THREE.CircleGeometry(PLAYER_SIZE * 0.85, 28),
+        new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.42, depthWrite: false })
+    );
+    shadowBlob.rotation.x = -Math.PI / 2;
+    shadowBlob.position.y = 0.04;
+    group.add(shadowBlob);
 
     // controlled-player ring under feet
     if (controlled) {
@@ -1823,6 +2473,15 @@ function buildPlayers() {
     team1Players = [];
     team2Players = [];
 
+    // Optional per-stadium VISUAL scale — shrinks the player mesh group
+    // (cylinder + head + ring + shadow blob) without touching collision /
+    // physics constants. Used by Etihad to bring the on-screen player-to-
+    // pitch ratio (PLAYER_SIZE/FIELD_W = 3.1%) closer to the FIFA-broadcast
+    // ratio (~1.5%, see 3.png) — pure cosmetic, gameplay distances unchanged.
+    const stadium = getSelectedStadium();
+    const visualScale = stadium?.visualPlayerScale ?? 1.0;
+    const applyScale = (g) => { if (visualScale !== 1.0) g.scale.setScalar(visualScale); };
+
     // determine which veldspeler is human-controlled per mode
     // Hot-Seat (duo): both veldspelers are human (P1 + P2)
     // CPU mode:       only P1 is human, the other team's veldspeler is the bot
@@ -1834,6 +2493,7 @@ function buildPlayers() {
     redKeeper.team = 1;
     redKeeper.isKeeper = true;
     redKeeper.homePosition = { x: -FIELD_W/2 + 5, z: 0 };
+    applyScale(redKeeper);
     scene.add(redKeeper);
     team1Players.push(redKeeper);
 
@@ -1845,6 +2505,7 @@ function buildPlayers() {
     redField.isKeeper = false;
     redField.homePosition = { x: -25, z: 0 };
     redField.userData.isBot = !redIsHuman;
+    applyScale(redField);
     scene.add(redField);
     team1Players.push(redField);
 
@@ -1854,6 +2515,7 @@ function buildPlayers() {
     blueKeeper.team = 2;
     blueKeeper.isKeeper = true;
     blueKeeper.homePosition = { x: FIELD_W/2 - 5, z: 0 };
+    applyScale(blueKeeper);
     scene.add(blueKeeper);
     team2Players.push(blueKeeper);
 
@@ -1864,6 +2526,7 @@ function buildPlayers() {
     blueField.isKeeper = false;
     blueField.homePosition = { x: 25, z: 0 };
     blueField.userData.isBot = !blueIsHuman;
+    applyScale(blueField);
     scene.add(blueField);
     team2Players.push(blueField);
 
@@ -1889,6 +2552,10 @@ function buildBall() {
     ball.position.set(0, BALL_SIZE, 0);
     ball.castShadow = true;
     ball.velocity = { x: 0, y: 0, z: 0 };
+    // Match the player visualPlayerScale so ball + figures stay in proportion.
+    const stadium = getSelectedStadium();
+    const visualScale = stadium?.visualPlayerScale ?? 1.0;
+    if (visualScale !== 1.0) ball.scale.setScalar(visualScale);
     scene.add(ball);
 }
 
@@ -2190,8 +2857,8 @@ function movePlayer(player, k) {
 
     // normalize so diagonal isn't 41% faster than cardinal
     const speed = 0.95;
-    const mx = (inX / inLen) * speed;
-    const mz = (inZ / inLen) * speed;
+    let mx = (inX / inLen) * speed;
+    let mz = (inZ / inLen) * speed;
 
     // remember last movement direction so the shoot command can aim with it
     player.userData.aimX = inX / inLen;

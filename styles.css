@@ -2044,19 +2044,21 @@ kbd {
 }
 .stadium-card__viewer.is-ready .stadium-card__viewer-canvas { opacity: 1; }
 
-/* silhouette acts as the load/error fallback */
+/* silhouette acts as the load/error fallback — hidden by default so the
+   accent-colored decorations don't peek through the transparent 3D canvas;
+   only revealed when the model actually fails to load. */
 .stadium-card__viewer-fallback {
     position: absolute;
     inset: 0;
     display: grid; place-items: center;
     transition: opacity 0.55s ease-out;
+    opacity: 0;
 }
 .stadium-card__viewer-fallback svg {
     width: 80%;
     height: 80%;
     display: block;
 }
-.stadium-card__viewer.is-ready .stadium-card__viewer-fallback { opacity: 0; }
 .stadium-card__viewer.is-failed .stadium-card__viewer-fallback,
 .stadium-card__viewer.is-unsupported .stadium-card__viewer-fallback { opacity: 1; }
 
