@@ -7,7 +7,7 @@
 // the live site is actually serving the latest game.js. If this string
 // doesn't show up in DevTools console after a refresh, the browser /
 // GitHub Pages CDN is still serving an older cached copy.
-const GAME_BUILD = 'v31-rotate-glb-90 (2026-05-06)';
+const GAME_BUILD = 'v32-etihad-camera-fix (2026-05-11)';
 console.log(`%c[GAME] build: ${GAME_BUILD}`,
     'background:#16a34a;color:#000;font-weight:bold;padding:3px 8px;border-radius:3px');
 
@@ -118,11 +118,11 @@ const STADIUMS = [
         cutawayFrontZ: FIELD_L / 2 + 2,
         gameplayScale: 1.0,
         visualPlayerScale: 0.55,
-        rotateY: Math.PI / 2,
-        cameraPos: [0, 25, 70],
+        rotateY: 0,
+        cameraPos: [0, 88, -34],
         cameraLookAt: [0, 0, 0],
-        cameraFov: 55,
-        cameraCutaway: true,
+        cameraFov: 42,
+        cameraCutaway: false,
     },
 ];
 
