@@ -170,144 +170,75 @@ html, body {
 #launch-screen {
     /* the user's poster is the launch screen */
     background:
-        url('img/startscherm.png') center / cover no-repeat,
+        url('img/new.png') center / cover no-repeat,
         linear-gradient(180deg, var(--bg-deep) 0%, var(--bg-mid) 100%);
     overflow: hidden;
     cursor: pointer;
 }
 
-/* poster mode: hide all the procedural decorations so the photo speaks for itself */
+/* hide elements that clash with the background photo */
 #launch-screen .pitch-frame,
 #launch-screen .ball-icon,
 #launch-screen .jersey,
-#launch-screen .launch-stage,
-#launch-screen .floodlight,
-#launch-screen .launch-footer,
-#launch-screen .ticker {
+#launch-screen .floodlight {
     display: none !important;
 }
 
-/* aspect-locked poster overlay -------------------------------
-   The launch background uses `cover` on a 16:9 poster. To pin real
-   buttons over poster artwork (like INSTELLINGEN), we replicate the
-   cover sizing on a transparent overlay so coordinates inside it
-   line up with the image content regardless of viewport aspect.   */
-.launch-poster-overlay {
-    position: absolute;
-    width:  max(100vw, calc(100vh * 16 / 9));
-    height: max(100vh, calc(100vw * 9 / 16));
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    pointer-events: none;
-    z-index: 5;
+/* constrain content to left side so the player stays visible */
+#launch-screen .launch-stage {
+    max-width: 52vw;
 }
 
-.launch-poster-mask {
-    /* Soft blurred dark patch that erases BOTH the INSTELLINGEN and UITSLUITEN
-       buttons from the poster — they had no real function. The KIES STADION
-       button is positioned in the upper half of this masked area, taking over
-       INSTELLINGEN's slot. Tuned on 16:9 — retune if the poster swaps. */
-    position: absolute;
-    top: 72.5%;
-    left: 3.5%;
-    width: 25%;
-    height: 18%;
-    pointer-events: none;
-    background:
-        radial-gradient(ellipse at center, rgba(2, 14, 8, 0.92) 55%, rgba(2, 14, 8, 0.55) 100%),
-        rgba(0, 0, 0, 0.45);
-    backdrop-filter: blur(14px) saturate(0.85);
-    -webkit-backdrop-filter: blur(14px) saturate(0.85);
-    border-radius: 6px;
-    /* feather the edges so it blends with the surrounding stadium glow */
-    mask-image: radial-gradient(ellipse at center, #000 60%, transparent 100%);
-    -webkit-mask-image: radial-gradient(ellipse at center, #000 60%, transparent 100%);
-}
-
-.launch-poster-btn {
-    /* Replaces the (functionless) INSTELLINGEN button on startscherm.png.
-       1:1 copy of the original ghost-button styling:
-         - Anton display font (same as the poster title + INSTELLINGEN label)
-         - trapezoid shape with a steeper slanted right edge
-         - prominent inset white border that follows the clip-path
-       The mask above wipes out BOTH original ghost buttons; this one sits on
-       INSTELLINGEN's slot. */
-    position: absolute;
-    top: 75.5%;
-    left: 5.4%;
-    width: 22%;
-    pointer-events: auto;
-
+/* both CTA buttons — identical class, identical rendering */
+.poster-btn {
+    display: inline-flex;
+    align-items: stretch;
     appearance: none;
-    background: rgba(8, 8, 8, 0.92);
+    background: rgba(8,8,8,0.88);
     border: 0;
-    border-radius: 0;
-    padding: 0.95rem 1.3rem;
+    padding: 0;
     color: var(--ink);
     font-family: var(--f-display);
     font-size: 1.15rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     cursor: pointer;
-    transition: background 0.2s ease, box-shadow 0.2s ease;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
     clip-path: polygon(0 0, 100% 0, calc(100% - 22px) 100%, 0 100%);
     box-shadow:
-        inset 0 0 0 1px rgba(255, 255, 255, 0.30),
-        0 6px 18px rgba(0, 0, 0, 0.45);
+        inset 0 0 0 1px rgba(255,255,255,0.28),
+        0 6px 18px rgba(0,0,0,0.45);
+    transition: box-shadow 0.2s ease, background 0.2s ease;
 }
-.launch-poster-btn__label { color: var(--ink); font-weight: 400; }
-.launch-poster-btn__arrow {
+.poster-btn:hover {
+    background: rgba(22,22,22,0.92);
+    box-shadow:
+        inset 0 0 0 1px rgba(255,255,255,0.55),
+        0 6px 20px rgba(0,0,0,0.5);
+}
+.poster-btn__label {
     color: var(--ink);
-    font-family: var(--f-display);
-    font-size: 1.2rem;
-    margin-right: 18px;
+    padding: 1rem 1.4rem;
+    flex: 1;
+    display: flex;
+    align-items: center;
+}
+.poster-btn__arrow {
+    background: var(--accent);
+    color: var(--bg-deep);
+    padding: 1rem 1.6rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
     transition: transform 0.2s ease;
 }
-.launch-poster-btn:hover {
-    background: rgba(22, 22, 22, 0.92);
-    box-shadow:
-        inset 0 0 0 1px rgba(255, 255, 255, 0.45),
-        0 6px 20px rgba(0, 0, 0, 0.5);
-}
-.launch-poster-btn:hover .launch-poster-btn__arrow { transform: translateX(3px); }
-.launch-poster-btn:focus-visible { outline: 2px solid rgba(255,255,255,0.45); outline-offset: 3px; }
+.poster-btn:hover .poster-btn__arrow { transform: translateX(3px); }
 
-/* subtle click-anywhere prompt at the very bottom */
-.launch-prompt {
-    position: absolute;
-    bottom: 3.4vh;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 6;
-    pointer-events: none;
-    font-family: var(--f-mono);
-    font-size: 0.72rem;
-    letter-spacing: 0.36em;
-    color: rgba(255,255,255,0.85);
-    text-transform: uppercase;
-    padding: 8px 18px;
-    border-radius: 999px;
-    background: rgba(0,0,0,0.45);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
-    border: 1px solid rgba(255,255,255,0.12);
-    animation: prompt-pulse 1.8s ease-in-out infinite;
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-}
-.launch-prompt::before {
-    content: "";
-    width: 6px; height: 6px; border-radius: 50%;
-    background: var(--accent);
-    box-shadow: 0 0 10px var(--accent);
-}
-@keyframes prompt-pulse {
-    0%,100% { opacity: 0.6; }
-    50%     { opacity: 1; }
+.launch-btns {
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+    margin-bottom: 2rem;
 }
 
 .floodlight {
@@ -458,8 +389,8 @@ html, body {
     color: var(--ink);
 }
 .word--bot {
-    color: transparent;
-    -webkit-text-stroke: 2px var(--accent);
+    color: var(--accent);
+    -webkit-text-stroke: 0;
     margin-top: -0.05em;
     margin-left: 0.1em;
 }

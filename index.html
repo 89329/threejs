@@ -57,18 +57,6 @@
 
     <!-- ============ LAUNCH SCREEN ============ -->
     <div id="launch-screen" class="screen">
-        <!-- Aspect-locked overlay: tracks the cover-rendered poster image so we
-             can pin a real button at the exact INSTELLINGEN spot from startscherm.png -->
-        <div class="launch-poster-overlay" aria-hidden="false">
-            <!-- masks the UITSLUITEN button on startscherm.png so the KIES
-                 STADION button below sits cleanly in its place -->
-            <div class="launch-poster-mask" aria-hidden="true"></div>
-            <button id="launch-stadium-pick" class="launch-poster-btn" type="button" aria-label="Kies stadion">
-                <span class="launch-poster-btn__label">Kies stadion</span>
-                <span class="launch-poster-btn__arrow" aria-hidden="true">→</span>
-            </button>
-        </div>
-        <div class="launch-prompt">Klik om te starten</div>
         <div class="floodlight floodlight--left"></div>
         <div class="floodlight floodlight--right"></div>
 
@@ -136,12 +124,16 @@
                 </span>
             </h1>
             <p class="launch-tag">Jouw club · jouw tactiek · jouw moment.</p>
-            <button id="launch-cta" class="cta-button cta-button--gold">
-                <span class="cta-button__inner">
-                    <span class="cta-button__label">Betreed het stadion</span>
-                    <span class="cta-button__arrow">→</span>
-                </span>
-            </button>
+            <div class="launch-btns">
+                <button id="launch-cta" class="poster-btn" type="button">
+                    <span class="poster-btn__label">Betreed het stadion</span>
+                    <span class="poster-btn__arrow">→</span>
+                </button>
+                <button id="launch-stadium-pick" class="poster-btn" type="button" aria-label="Bekijk stadion">
+                    <span class="poster-btn__label">Bekijk stadion</span>
+                    <span class="poster-btn__arrow">→</span>
+                </button>
+            </div>
             <div class="launch-meta">
                 <div class="meta-block">
                     <span class="meta-key">Stadion</span>
