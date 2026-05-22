@@ -189,6 +189,18 @@ html, body {
     max-width: 52vw;
 }
 
+/* the poster background already has the title/eyebrow/tagline/footer + buttons baked in —
+   hide the HTML duplicates so we don't see ghosted double text.
+   Clicks on the painted buttons are routed in JS (bindLaunch) by coordinate. */
+#launch-screen .launch-title,
+#launch-screen .launch-eyebrow,
+#launch-screen .launch-tag,
+#launch-screen .launch-meta,
+#launch-screen .launch-footer,
+#launch-screen .launch-btns {
+    display: none !important;
+}
+
 /* both CTA buttons — identical class, identical rendering */
 .poster-btn {
     display: inline-flex;
@@ -357,8 +369,6 @@ html, body {
     letter-spacing: 0.32em;
     color: var(--ink-soft);
     text-transform: uppercase;
-    opacity: 0;
-    animation: fade-in 0.9s ease-out 0.2s forwards;
 }
 .launch-eyebrow .dot {
     width: 6px; height: 6px; border-radius: 50%;
@@ -396,15 +406,6 @@ html, body {
 }
 .char {
     display: inline-block;
-    transform: translateY(120%);
-    opacity: 0;
-    animation: char-drop 0.7s cubic-bezier(.2,.8,.2,1) forwards;
-    animation-delay: calc(0.4s + var(--i) * 0.05s);
-}
-@keyframes char-drop {
-    0%   { transform: translateY(120%) rotate(8deg); opacity: 0; }
-    60%  { opacity: 1; }
-    100% { transform: translateY(0) rotate(0); opacity: 1; }
 }
 
 .launch-tag {
@@ -415,8 +416,6 @@ html, body {
     color: var(--ink-mute);
     text-transform: uppercase;
     margin: 1.2rem 0 2rem;
-    opacity: 0;
-    animation: fade-in 0.8s ease-out 1.1s forwards;
 }
 
 .launch-meta {
@@ -424,8 +423,6 @@ html, body {
     grid-template-columns: repeat(3, max-content);
     gap: 2.5rem;
     padding-bottom: 4rem;
-    opacity: 0;
-    animation: fade-in 0.8s ease-out 1.4s forwards;
 }
 .meta-block { display: grid; gap: 4px; }
 .meta-key {
@@ -494,8 +491,6 @@ html, body {
     margin-top: 0.4rem;
     margin-bottom: 1.5rem;
     z-index: 3;
-    opacity: 0;
-    animation: fade-in 0.8s ease-out 1.2s forwards;
 }
 
 /* ticker */

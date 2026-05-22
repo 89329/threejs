@@ -4,18 +4,74 @@
 // =====================================================
 
 // ----------- LAUNCH -----------
+// The launch screen uses img/new.png as a cover-fit background. The poster has
+// two buttons painted on it ("Betreed het stadion" and "Bekijk stadion"). We
+// translate clicks back into the poster's own coordinate space so each painted
+// button stays clickable at any viewport size / aspect ratio.
+const POSTER_ASPECT = 1920 / 1080;
+// Normalized region (0–1) within the poster image for "Bekijk stadion":
+const POSTER_BTN_STADIUM_PICK = { x0: 0.04, x1: 0.26, y0: 0.78, y1: 0.86 };
+// Set to true to see the hit zone outlined on screen
+const POSTER_HITBOX_DEBUG = true;
+
+function posterImageRect(screenEl) {
+    const rect = screenEl.getBoundingClientRect();
+    const viewportAspect = rect.width / rect.height;
+    let imgW, imgH, offX, offY;
+    if (viewportAspect > POSTER_ASPECT) {
+        imgW = rect.width;
+        imgH = rect.width / POSTER_ASPECT;
+        offX = 0;
+        offY = (rect.height - imgH) / 2;
+    } else {
+        imgH = rect.height;
+        imgW = rect.height * POSTER_ASPECT;
+        offX = (rect.width - imgW) / 2;
+        offY = 0;
+    }
+    return { imgW, imgH, offX, offY, rect };
+}
+
+function paintPosterHitboxes(screenEl) {
+    if (!POSTER_HITBOX_DEBUG) return;
+    let box = screenEl.querySelector('.poster-hitbox-debug');
+    if (!box) {
+        box = document.createElement('div');
+        box.className = 'poster-hitbox-debug';
+        Object.assign(box.style, {
+            position: 'absolute',
+            pointerEvents: 'none',
+            border: '2px solid #22d3ee',
+            background: 'rgba(34, 211, 238, 0.18)',
+            zIndex: '4',
+            boxShadow: '0 0 18px rgba(34, 211, 238, 0.55)'
+        });
+        screenEl.appendChild(box);
+    }
+    const { imgW, imgH, offX, offY } = posterImageRect(screenEl);
+    const b = POSTER_BTN_STADIUM_PICK;
+    box.style.left   = (offX + b.x0 * imgW) + 'px';
+    box.style.top    = (offY + b.y0 * imgH) + 'px';
+    box.style.width  = ((b.x1 - b.x0) * imgW) + 'px';
+    box.style.height = ((b.y1 - b.y0) * imgH) + 'px';
+}
+
 function bindLaunch() {
-    // the entire poster is one big call-to-action — click anywhere to enter…
-    $('launch-screen').addEventListener('click', () => {
-        if (STATE.screen === 'launch') goToSetup();
+    const screen = $('launch-screen');
+    screen.addEventListener('click', (e) => {
+        if (STATE.screen !== 'launch') return;
+        const { imgW, imgH, offX, offY, rect } = posterImageRect(e.currentTarget);
+        const nx = (e.clientX - rect.left - offX) / imgW;
+        const ny = (e.clientY - rect.top - offY) / imgH;
+        const b = POSTER_BTN_STADIUM_PICK;
+        if (nx >= b.x0 && nx <= b.x1 && ny >= b.y0 && ny <= b.y1) {
+            openStadiumPicker();
+        } else {
+            goToSetup();
+        }
     });
-    // …except clicks on the Stadion meta-block, which open the picker instead
-    const pick = $('launch-stadium-pick');
-    pick?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        e.currentTarget.blur();
-        openStadiumPicker();
-    });
+    paintPosterHitboxes(screen);
+    window.addEventListener('resize', () => paintPosterHitboxes(screen));
 }
 function updateLaunchStadiumLabel() {
     const lbl = $('launch-stadium-name');
