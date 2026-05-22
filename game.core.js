@@ -71,6 +71,8 @@ const STADIUMS = [
         offsetY: 0,
         nativePitch: true,
         pitchBrighten: 1.9,
+        pitchColor: '#1d8a45',
+        pitchEmissive: '#0a3a1d',
         cutawayFrontZ: null,
         gameplayScale: 1.0,
         cameraPos: [0, 72, 78],

@@ -539,6 +539,12 @@ function buildStadium() {
     const cutawayFrontZ = stadium.cutawayFrontZ ?? null; // hide near-side GLB pieces in camera corridor
     const nativePitch = stadium.nativePitch === true;    // use the GLB's own pitch (no dimming)
     const pitchBrighten = stadium.pitchBrighten ?? 1.0;  // extra multiplier on pitch base color
+    const pitchColor   = stadium.pitchColor   ?? null;   // hex override — replaces the pitch base color.
+                                                         // Only applied to meshes passing the STRICT
+                                                         // looksLikePitchMesh() test, so it can't bleed
+                                                         // onto stand floors / terraces.
+    const pitchEmissive = stadium.pitchEmissive ?? null; // hex emissive boost (strict-pitch only) so a
+                                                         // dark GLB pitch reads as grass under night lights.
     const gameplayScale = stadium.gameplayScale ?? 1.0;  // make imported stadiums feel larger in-game
 
     const loader = new THREE.GLTFLoader();
@@ -770,7 +776,20 @@ function buildStadium() {
                     const isPitchLike = isOfficialPitch || (nativePitch && isFlatLowCandidate);
 
                     if (isPitchLike) {
-                        if (pitchBrighten !== 1.0 && m.color) m.color.multiplyScalar(pitchBrighten);
+                        // Color override is gated on being THE primary pitch mesh
+                        // (the one findGLBPitchBox picked as the playing surface).
+                        // Anything else only gets brighten + shadow zeroing — that
+                        // stops the override from staining stand floors / decals.
+                        const isPrimaryPitch = pitchBox && pitchBox.mesh === c;
+                        if (isPrimaryPitch && pitchColor && m.color) {
+                            m.color.set(pitchColor);
+                        } else if (pitchBrighten !== 1.0 && m.color) {
+                            m.color.multiplyScalar(pitchBrighten);
+                        }
+                        if (isPrimaryPitch && pitchEmissive && m.emissive) {
+                            m.emissive.set(pitchEmissive);
+                            m.emissiveIntensity = 1.0;
+                        }
                         m.roughness = Math.max(0.85, m.roughness ?? 1);
                         // kill baked-in daylight shadows (lightmap + AO + emissive)
                         // — this is what was missing for Old Trafford. Roof &
@@ -782,7 +801,8 @@ function buildStadium() {
                         const beforeEM = m.emissiveIntensity;
                         if (m.lightMap) m.lightMapIntensity = 0;
                         if (m.aoMap) m.aoMapIntensity = 0;
-                        if (m.emissive) m.emissiveIntensity = 0;
+                        // preserve emissive intensity when we just set pitchEmissive on the primary pitch mesh
+                        if (m.emissive && !(isPrimaryPitch && pitchEmissive)) m.emissiveIntensity = 0;
                         m.needsUpdate = true;
                         console.log(`[pitch-channels] ${stadium.id}:${c.name || 'unnamed'}: lightMap=${!!m.lightMap}(${beforeLM}→0) aoMap=${!!m.aoMap}(${beforeAO}→0) emissive=${beforeEM}→0`);
                     }
@@ -946,7 +966,7 @@ function findGLBPitchBox(arena) {
             score += Math.abs(ratio - 1.54) * 40;     // football ratio target
             score += offCenter * 30;                  // central preference
             score += Math.abs(sizeFrac - 0.42) * 25;  // expected ~42% of stadium span
-            out.push({ box: b.clone(), score, namedAsPitch, ratio, sizeFrac, label });
+            out.push({ box: b.clone(), mesh: c, score, namedAsPitch, ratio, sizeFrac, label });
         });
         return out;
     };
@@ -989,7 +1009,9 @@ function findGLBPitchBox(arena) {
     if (closeToBest.length > 1) {
         console.log(`[findGLBPitchBox] y-tiebreak considered ${closeToBest.length} similar candidates:`, closeToBest.map(c => ({ score: +c.score.toFixed(1), yMin: +c.box.min.y.toFixed(2), yMax: +c.box.max.y.toFixed(2) })));
     }
-    return pick.box.clone();
+    const result = pick.box.clone();
+    result.mesh = pick.mesh;
+    return result;
 }
 
 // Last-resort pitch finder — used when both strict and relaxed passes of
@@ -1034,7 +1056,7 @@ function findLargestFlatLowMesh(arena) {
         // strong bonus if the mesh names itself as a pitch
         if (namedAsPitch) score -= 250;
 
-        candidates.push({ box: b.clone(), score, area, footprintFrac, ratio, namedAsPitch, name: c.name || '(unnamed)' });
+        candidates.push({ box: b.clone(), mesh: c, score, area, footprintFrac, ratio, namedAsPitch, name: c.name || '(unnamed)' });
     });
 
     if (!candidates.length) {
@@ -1056,7 +1078,9 @@ function findLargestFlatLowMesh(arena) {
     if (closeToBest.length > 1) {
         console.log(`[findLargestFlatLowMesh] y-tiebreak considered ${closeToBest.length} similar candidates:`, closeToBest.map(c => ({ name: c.name, score: +c.score.toFixed(0), yMin: +c.box.min.y.toFixed(2), yMax: +c.box.max.y.toFixed(2) })));
     }
-    return pick.box.clone();
+    const result = pick.box.clone();
+    result.mesh = pick.mesh;
+    return result;
 }
 
 // Detect whether a mesh inside the imported GLB looks like the stadium pitch
