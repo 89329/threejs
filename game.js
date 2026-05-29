@@ -214,7 +214,7 @@ function buildField() {
         // dark concrete plane far outside the stadium so any gap in the import
         // (cutaways, missing back wall) reads as ground instead of black void
         const outerGeo = new THREE.PlaneGeometry(2000, 2000);
-        const outerMat = new THREE.MeshStandardMaterial({ color: 0x05060a, roughness: 1.0, metalness: 0.0 });
+        const outerMat = new THREE.MeshStandardMaterial({ color: stadium.outerGroundColor ?? 0x05060a, roughness: 1.0, metalness: 0.0 });
         const outer = new THREE.Mesh(outerGeo, outerMat);
         outer.rotation.x = -Math.PI / 2;
         outer.position.y = -0.6;
@@ -361,18 +361,13 @@ function buildGoals() {
 function makePlayer(color, isKeeper, controlled) {
     const group = new THREE.Group();
 
-    const bodyMat = new THREE.MeshStandardMaterial({
-        color: color,
-        metalness: 0.2,
-        roughness: 0.55,
-        emissive: controlled ? color : 0x000000,
-        emissiveIntensity: controlled ? 0.18 : 0,
-    });
+    const bodyMat = new THREE.MeshBasicMaterial({ color: color });
     const body = new THREE.Mesh(
         new THREE.CylinderGeometry(PLAYER_SIZE/2, PLAYER_SIZE/2 + 0.4, PLAYER_SIZE, 16),
         bodyMat
     );
-    body.position.y = PLAYER_SIZE/2;
+    // lift bottom 0.05 above pitch to avoid z-fight with the procedural field plane
+    body.position.y = PLAYER_SIZE/2 + 0.05;
     // No real-time cast shadow — the cylinder + sphere silhouette projected
     // by the corner spotlight produces an elongated capsule-with-cap shape
     // that, viewed from the gameplay camera, reads as a fighter-jet outline
@@ -380,12 +375,12 @@ function makePlayer(color, isKeeper, controlled) {
     body.castShadow = false;
     group.add(body);
 
-    const headMat = new THREE.MeshStandardMaterial({ color: COLORS.skin, roughness: 0.6, metalness: 0.05 });
+    const headMat = new THREE.MeshBasicMaterial({ color: COLORS.skin });
     const head = new THREE.Mesh(
         new THREE.SphereGeometry(PLAYER_SIZE * 0.35, 16, 12),
         headMat
     );
-    head.position.y = PLAYER_SIZE + PLAYER_SIZE * 0.32;
+    head.position.y = PLAYER_SIZE + PLAYER_SIZE * 0.32 + 0.05;
     head.castShadow = false;
     group.add(head);
 
@@ -498,13 +493,7 @@ function buildPlayers() {
 
 function buildBall() {
     const geo = new THREE.SphereGeometry(BALL_SIZE, 24, 18);
-    const mat = new THREE.MeshStandardMaterial({
-        color: 0xffffff,
-        metalness: 0.05,
-        roughness: 0.4,
-        emissive: 0xffffff,
-        emissiveIntensity: 0.05,
-    });
+    const mat = new THREE.MeshBasicMaterial({ color: 0xffffff });
     ball = new THREE.Mesh(geo, mat);
     ball.position.set(0, BALL_SIZE, 0);
     ball.castShadow = true;

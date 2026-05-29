@@ -565,20 +565,21 @@ function buildStadium() {
             const initialScale = (span > 0.01 ? targetSpan / span : 1) * scaleMul;
             arena.scale.setScalar(initialScale);
 
-            // Step 2 — when the GLB's own pitch IS the gameplay surface,
-            // refine the scale so the imported pitch matches FIELD_W × FIELD_L
-            // (with a small margin), then recenter on the *pitch* center and
-            // park the grass surface at world y ≈ 0. Without this the players
-            // and goals end up as figurines floating in the middle of a much
-            // larger imported pitch.
-            let pitchBox = nativePitch ? findGLBPitchBox(arena) : null;
+            // Step 2 — when the GLB pitch is relevant to gameplay alignment
+            // (either rendered as the real pitch, or hidden via fieldCutout and
+            // replaced by our procedural pitch), refine the scale so that the
+            // imported pitch matches FIELD_W × FIELD_L.  This keeps players at
+            // midfield instead of under a stand when the stadium model's bbox
+            // is off-centre, which is common for asymmetric grounds.
+            const anchorToImportedPitch = nativePitch || fieldCutout;
+            let pitchBox = anchorToImportedPitch ? findGLBPitchBox(arena) : null;
             // Last-resort fallback: if both strict + relaxed passes failed,
             // pick the LARGEST flat-low mesh in the lower 50% of the model
             // and treat IT as the pitch. Pure geometry — no offCenter / ratio
             // gates, just "biggest grass-shaped slab near the floor". This
             // catches stadiums (Etihad's solar-canopy bbox skew, etc.) where
             // the heuristic gates all reject the real pitch.
-            if (nativePitch && !pitchBox) {
+            if (anchorToImportedPitch && !pitchBox) {
                 pitchBox = findLargestFlatLowMesh(arena);
                 if (pitchBox) {
                     const sz = pitchBox.getSize(new THREE.Vector3());
@@ -593,13 +594,13 @@ function buildStadium() {
                 if (Number.isFinite(correction) && correction > 0 && Math.abs(correction - 1) > 0.02) {
                     arena.scale.multiplyScalar(correction);
                     arena.updateMatrixWorld(true);
-                    pitchBox = findGLBPitchBox(arena); // refresh after rescale
+                    pitchBox = findGLBPitchBox(arena) || findLargestFlatLowMesh(arena); // refresh after rescale
                 }
             }
 
             // Step 3 — recenter & place
             arena.updateMatrixWorld(true);
-            if (nativePitch && pitchBox) {
+            if (anchorToImportedPitch && pitchBox) {
                 const pcenter = pitchBox.getCenter(new THREE.Vector3());
                 arena.position.x -= pcenter.x;
                 arena.position.z -= pcenter.z;
@@ -958,7 +959,7 @@ function findGLBPitchBox(arena) {
             const offCenter = Math.hypot(offX, offZ);
             if (offCenter > maxOff) return;
 
-            const namedAsPitch = /(^|[_\s\-/])(pitch|field|grass|turf)([_\s\-/]|$)/i.test(c.name || '');
+            const namedAsPitch = isNamedPitchMesh(c);
             const sizeFrac = longer / importSpan;
 
             let score = 0;
@@ -1298,9 +1299,16 @@ function looksLikePitchMesh(mesh) {
 
     const lowToGround = box.min.y < 5 && center.y < 8;
     const broadFlat = size.y < 3 && size.x > FIELD_W * 0.18 && size.z > FIELD_L * 0.18;
-    const namedAsPitch = /pitch|field|grass|turf|ground|plane/i.test(mesh.name || '');
+    const namedAsPitch = isNamedPitchMesh(mesh);
 
     return lowToGround && (broadFlat || namedAsPitch);
+}
+
+function isNamedPitchMesh(mesh) {
+    const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    const materialNames = mats.map(m => m?.name || '').join(' ');
+    const label = `${mesh.name || ''} ${materialNames}`;
+    return /(^|[_\s\-/])(pitch|field|grass|turf|ground|cancha|cesped|pasto)([_\s\-/]|$)/i.test(label);
 }
 
 function shouldHideImportedFrontMesh(mesh, cutawayFrontZ) {
