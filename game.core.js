@@ -7,7 +7,7 @@
 // the live site is actually serving the latest game.js. If this string
 // doesn't show up in DevTools console after a refresh, the browser /
 // GitHub Pages CDN is still serving an older cached copy.
-const GAME_BUILD = 'v39-camera-cutaway (2026-05-29)';
+const GAME_BUILD = 'v40-drop-oversized-glb (2026-05-29)';
 console.log(`%c[GAME] build: ${GAME_BUILD}`,
     'background:#16a34a;color:#000;font-weight:bold;padding:3px 8px;border-radius:3px');
 
@@ -235,31 +235,6 @@ const STADIUMS = [
         file: 'media/models/stadiums/otkritie_arena.glb',
         accent: '#ee1d23',
         capacity: '45.360',
-        mood: 'AVOND',
-        silhouette: 'bowl',
-        scaleMul: 0.78,
-        colorScale: 0.55,
-        offsetY: 0,
-        nativePitch: false,
-        fieldCutout: true,
-        pitchBrighten: 1.9,
-        cutawayFrontZ: null,
-        gameplayScale: 1.0,
-        visualPlayerScale: 0.55,
-        cameraPos: [0, 30, 75],
-        cameraLookAt: [0, 4, 0],
-        cameraFov: 38,
-        cameraCutaway: true,
-    },
-    {
-        id: 'estadio-unico',
-        skipFallback: true,
-        name: 'Estadio Único',
-        sub: 'MADRE DE CIUDADES',
-        tagline: 'Santiago del Estero late.',
-        file: 'media/models/stadiums/estadio_unico_madre_de_ciudades.glb',
-        accent: '#f5b400',
-        capacity: '30.000',
         mood: 'AVOND',
         silhouette: 'bowl',
         scaleMul: 0.78,
