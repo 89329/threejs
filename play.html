@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PITCH ROYALE — Quick Play (∞)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Fraunces:ital,opsz,wght@1,9..144,500;1,9..144,700;1,9..144,900&family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="grain" aria-hidden="true"></div>
+    <div class="vignette" aria-hidden="true"></div>
+
+    <!-- ============ GAME ============ -->
+    <div id="game-screen" class="screen">
+        <div class="hud-top">
+            <div class="hud-team hud-team--red">
+                <span class="hud-team__chip">R</span>
+                <div class="hud-team__name" id="hud-p1-name">P1</div>
+                <div class="hud-team__sub">Rood</div>
+            </div>
+
+            <div class="hud-center">
+                <div class="hud-score tabular">
+                    <span id="hud-s1">0</span>
+                    <span class="hud-score__sep">·</span>
+                    <span id="hud-s2">0</span>
+                </div>
+                <div class="hud-timer tabular" id="hud-timer">∞</div>
+                <div class="hud-status" id="hud-status">LIVE</div>
+            </div>
+
+            <div class="hud-team hud-team--blue">
+                <div class="hud-team__name" id="hud-p2-name">P2</div>
+                <div class="hud-team__sub">Blauw</div>
+                <span class="hud-team__chip">B</span>
+            </div>
+        </div>
+
+        <div class="hud-controls">
+            <div class="hud-controls__col hud-controls__col--red">
+                <span class="hud-controls__who" id="hud-controls-p1">P1</span>
+                <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>
+                <span class="hud-controls__plus">+</span>
+                <kbd>SPATIE</kbd>
+                <span class="hud-controls__hint">houd = harder · <kbd>Q</kbd> = pass / vraag</span>
+            </div>
+            <div class="hud-controls__col hud-controls__col--blue">
+                <span class="hud-controls__who" id="hud-controls-p2">P2</span>
+                <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd>
+                <span class="hud-controls__plus">+</span>
+                <kbd>ENTER</kbd>
+                <span class="hud-controls__hint">houd = harder · <kbd>⇧</kbd> = pass / vraag</span>
+            </div>
+        </div>
+
+        <div class="kickoff-overlay" id="kickoff-overlay" hidden>
+            <div class="kickoff-overlay__num" id="kickoff-num">3</div>
+            <div class="kickoff-overlay__lbl">AFTRAP</div>
+        </div>
+
+        <div class="goal-flash" id="goal-flash" hidden>
+            <div class="goal-flash__bg"></div>
+            <div class="goal-flash__text">DOELPUNT</div>
+            <div class="goal-flash__sub" id="goal-flash-sub">P1</div>
+        </div>
+
+        <button id="pause-btn" class="pause-btn" title="Pauze (P / ESC)" aria-label="Pauzeer">
+            <span></span><span></span>
+        </button>
+
+        <div id="pause-overlay" class="pause-overlay" hidden>
+            <div class="pause-overlay__panel">
+                <div class="pause-overlay__crumb">— PAUZE —</div>
+                <div class="pause-overlay__title">GEPAUZEERD</div>
+                <div class="pause-overlay__sub">Druk <kbd>P</kbd> of <kbd>ESC</kbd> om door te gaan</div>
+                <button id="pause-resume" class="cta-button cta-button--gold">
+                    <span class="cta-button__inner">
+                        <span class="cta-button__label">Hervatten</span>
+                        <span class="cta-button__arrow">▶</span>
+                    </span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="game.core.js"></script>
+    <script src="game.stadium.js"></script>
+    <script src="game.ui.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>

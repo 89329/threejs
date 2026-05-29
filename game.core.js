@@ -7,7 +7,7 @@
 // the live site is actually serving the latest game.js. If this string
 // doesn't show up in DevTools console after a refresh, the browser /
 // GitHub Pages CDN is still serving an older cached copy.
-const GAME_BUILD = 'v35-skip-fallback (2026-05-29)';
+const GAME_BUILD = 'v39-camera-cutaway (2026-05-29)';
 console.log(`%c[GAME] build: ${GAME_BUILD}`,
     'background:#16a34a;color:#000;font-weight:bold;padding:3px 8px;border-radius:3px');
 
@@ -140,14 +140,16 @@ const STADIUMS = [
         scaleMul: 0.78,
         colorScale: 0.55,
         offsetY: 0,
-        nativePitch: true,
+        nativePitch: false,
+        fieldCutout: true,
         pitchBrighten: 1.9,
         cutawayFrontZ: null,
         gameplayScale: 1.0,
-        cameraPos: [0, 72, 78],
-        cameraLookAt: [0, 0, 0],
-        cameraFov: 58,
-        cameraCutaway: false,
+        visualPlayerScale: 0.55,
+        cameraPos: [0, 30, 75],
+        cameraLookAt: [0, 4, 0],
+        cameraFov: 38,
+        cameraCutaway: true,
     },
     {
         id: 'emirates',
@@ -163,14 +165,16 @@ const STADIUMS = [
         scaleMul: 0.78,
         colorScale: 0.55,
         offsetY: 0,
-        nativePitch: true,
+        nativePitch: false,
+        fieldCutout: true,
         pitchBrighten: 1.9,
         cutawayFrontZ: null,
         gameplayScale: 1.0,
-        cameraPos: [0, 72, 78],
-        cameraLookAt: [0, 0, 0],
-        cameraFov: 58,
-        cameraCutaway: false,
+        visualPlayerScale: 0.55,
+        cameraPos: [0, 30, 75],
+        cameraLookAt: [0, 4, 0],
+        cameraFov: 38,
+        cameraCutaway: true,
     },
     {
         id: 'wanda-metropolitano',
@@ -186,14 +190,16 @@ const STADIUMS = [
         scaleMul: 0.78,
         colorScale: 0.55,
         offsetY: 0,
-        nativePitch: true,
+        nativePitch: false,
+        fieldCutout: true,
         pitchBrighten: 1.9,
         cutawayFrontZ: null,
         gameplayScale: 1.0,
-        cameraPos: [0, 72, 78],
-        cameraLookAt: [0, 0, 0],
-        cameraFov: 58,
-        cameraCutaway: false,
+        visualPlayerScale: 0.55,
+        cameraPos: [0, 30, 75],
+        cameraLookAt: [0, 4, 0],
+        cameraFov: 38,
+        cameraCutaway: true,
     },
     {
         id: 'la-bombonera',
@@ -209,14 +215,16 @@ const STADIUMS = [
         scaleMul: 0.78,
         colorScale: 0.55,
         offsetY: 0,
-        nativePitch: true,
+        nativePitch: false,
+        fieldCutout: true,
         pitchBrighten: 1.9,
         cutawayFrontZ: null,
         gameplayScale: 1.0,
-        cameraPos: [0, 72, 78],
-        cameraLookAt: [0, 0, 0],
-        cameraFov: 58,
-        cameraCutaway: false,
+        visualPlayerScale: 0.55,
+        cameraPos: [0, 30, 75],
+        cameraLookAt: [0, 4, 0],
+        cameraFov: 38,
+        cameraCutaway: true,
     },
     {
         id: 'otkritie-arena',
@@ -232,14 +240,16 @@ const STADIUMS = [
         scaleMul: 0.78,
         colorScale: 0.55,
         offsetY: 0,
-        nativePitch: true,
+        nativePitch: false,
+        fieldCutout: true,
         pitchBrighten: 1.9,
         cutawayFrontZ: null,
         gameplayScale: 1.0,
-        cameraPos: [0, 72, 78],
-        cameraLookAt: [0, 0, 0],
-        cameraFov: 58,
-        cameraCutaway: false,
+        visualPlayerScale: 0.55,
+        cameraPos: [0, 30, 75],
+        cameraLookAt: [0, 4, 0],
+        cameraFov: 38,
+        cameraCutaway: true,
     },
     {
         id: 'estadio-unico',
@@ -255,14 +265,16 @@ const STADIUMS = [
         scaleMul: 0.78,
         colorScale: 0.55,
         offsetY: 0,
-        nativePitch: true,
+        nativePitch: false,
+        fieldCutout: true,
         pitchBrighten: 1.9,
         cutawayFrontZ: null,
         gameplayScale: 1.0,
-        cameraPos: [0, 72, 78],
-        cameraLookAt: [0, 0, 0],
-        cameraFov: 58,
-        cameraCutaway: false,
+        visualPlayerScale: 0.55,
+        cameraPos: [0, 30, 75],
+        cameraLookAt: [0, 4, 0],
+        cameraFov: 38,
+        cameraCutaway: true,
     },
     {
         id: 'home-park',
@@ -278,14 +290,16 @@ const STADIUMS = [
         scaleMul: 0.78,
         colorScale: 0.55,
         offsetY: 0,
-        nativePitch: true,
+        nativePitch: false,
+        fieldCutout: true,
         pitchBrighten: 1.9,
         cutawayFrontZ: null,
         gameplayScale: 1.0,
-        cameraPos: [0, 72, 78],
-        cameraLookAt: [0, 0, 0],
-        cameraFov: 58,
-        cameraCutaway: false,
+        visualPlayerScale: 0.55,
+        cameraPos: [0, 30, 75],
+        cameraLookAt: [0, 4, 0],
+        cameraFov: 38,
+        cameraCutaway: true,
     },
     {
         id: 'cheltenham',
@@ -301,14 +315,16 @@ const STADIUMS = [
         scaleMul: 0.78,
         colorScale: 0.55,
         offsetY: 0,
-        nativePitch: true,
+        nativePitch: false,
+        fieldCutout: true,
         pitchBrighten: 1.9,
         cutawayFrontZ: null,
         gameplayScale: 1.0,
-        cameraPos: [0, 72, 78],
-        cameraLookAt: [0, 0, 0],
-        cameraFov: 58,
-        cameraCutaway: false,
+        visualPlayerScale: 0.55,
+        cameraPos: [0, 30, 75],
+        cameraLookAt: [0, 4, 0],
+        cameraFov: 38,
+        cameraCutaway: true,
     },
 ];
 
@@ -358,7 +374,23 @@ function navigateToFromPopState(target) {
 }
 
 // ----------- screen flow -----------
+const QUICK_MODE = location.pathname.endsWith('play.html');
+
 document.addEventListener('DOMContentLoaded', () => {
+    if (QUICK_MODE) {
+        // Quick-play page: skip launch/setup/coin entirely, jump straight into
+        // an infinite-duration match with sensible defaults. Pause still works.
+        bindPause();
+        STATE.p1.name = 'P1';
+        STATE.p2.name = 'P2';
+        STATE.mode = 'duo';
+        STATE.kickoffTeam = 1;
+        STATE.gameDuration = Infinity;
+        history.replaceState({ screen: 'playing' }, '', location.pathname + location.search);
+        startGame();
+        return;
+    }
+
     bindLaunch();
     bindSetup();
     bindCoin();

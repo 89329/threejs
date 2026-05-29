@@ -1438,6 +1438,7 @@ function updateTimer() {
     }
 }
 function formatTime(s) {
+    if (!Number.isFinite(s)) return '∞';
     const m = Math.floor(s / 60);
     const r = s % 60;
     return `${m}:${r.toString().padStart(2,'0')}`;
