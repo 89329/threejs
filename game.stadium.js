@@ -905,9 +905,9 @@ function buildStadium() {
         }
     );
 
-    // always render the fallback bowl too — it sits below the imported model
-    // so we always have *something* if the GLB is small/transparent in spots.
-    buildStadiumFallback();
+    // render the fallback bowl below the imported model so gaps in the GLB
+    // don't read as black void — unless the stadium opts out via skipFallback.
+    if (!stadium.skipFallback) buildStadiumFallback();
 }
 
 // Translation-invariant pitch finder — used during auto-fit when the GLB

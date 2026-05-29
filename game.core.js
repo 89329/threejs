@@ -7,7 +7,7 @@
 // the live site is actually serving the latest game.js. If this string
 // doesn't show up in DevTools console after a refresh, the browser /
 // GitHub Pages CDN is still serving an older cached copy.
-const GAME_BUILD = 'v34-new-stadiums (2026-05-29)';
+const GAME_BUILD = 'v35-skip-fallback (2026-05-29)';
 console.log(`%c[GAME] build: ${GAME_BUILD}`,
     'background:#16a34a;color:#000;font-weight:bold;padding:3px 8px;border-radius:3px');
 
@@ -128,6 +128,7 @@ const STADIUMS = [
     },
     {
         id: 'anfield',
+        skipFallback: true,
         name: 'Anfield',
         sub: 'HOME · THE REDS',
         tagline: "You'll Never Walk Alone.",
@@ -150,6 +151,7 @@ const STADIUMS = [
     },
     {
         id: 'emirates',
+        skipFallback: true,
         name: 'Emirates Stadium',
         sub: 'HOME · GUNNERS',
         tagline: 'Victoria Concordia Crescit.',
@@ -172,6 +174,7 @@ const STADIUMS = [
     },
     {
         id: 'wanda-metropolitano',
+        skipFallback: true,
         name: 'Wanda Metropolitano',
         sub: 'HOME · ATLÉTICO',
         tagline: 'Nunca dejes de creer.',
@@ -194,6 +197,7 @@ const STADIUMS = [
     },
     {
         id: 'la-bombonera',
+        skipFallback: true,
         name: 'La Bombonera',
         sub: 'HOME · BOCA JUNIORS',
         tagline: 'La mitad más uno.',
@@ -216,6 +220,7 @@ const STADIUMS = [
     },
     {
         id: 'otkritie-arena',
+        skipFallback: true,
         name: 'Otkritie Arena',
         sub: 'HOME · SPARTAK',
         tagline: 'Гладиатор на поле.',
@@ -238,6 +243,7 @@ const STADIUMS = [
     },
     {
         id: 'estadio-unico',
+        skipFallback: true,
         name: 'Estadio Único',
         sub: 'MADRE DE CIUDADES',
         tagline: 'Santiago del Estero late.',
@@ -260,6 +266,7 @@ const STADIUMS = [
     },
     {
         id: 'home-park',
+        skipFallback: true,
         name: 'Home Park',
         sub: 'HOME · PLYMOUTH ARGYLE',
         tagline: 'The Theatre of Greens.',
@@ -282,6 +289,7 @@ const STADIUMS = [
     },
     {
         id: 'cheltenham',
+        skipFallback: true,
         name: 'Cheltenham Pitch',
         sub: 'TRAINING GROUND',
         tagline: 'Grassroots glory.',
