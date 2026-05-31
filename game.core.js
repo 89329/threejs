@@ -7,7 +7,7 @@
 // the live site is actually serving the latest game.js. If this string
 // doesn't show up in DevTools console after a refresh, the browser /
 // GitHub Pages CDN is still serving an older cached copy.
-const GAME_BUILD = 'v52-bombonera-camera-no-dark-edge (2026-05-29)';
+const GAME_BUILD = 'v67-back-to-iconic-tribunes (2026-05-31)';
 console.log(`%c[GAME] build: ${GAME_BUILD}`,
     'background:#16a34a;color:#000;font-weight:bold;padding:3px 8px;border-radius:3px');
 
@@ -210,19 +210,25 @@ const STADIUMS = [
         mood: 'AVOND',
         silhouette: 'classic',
         scaleMul: 0.78,
-        colorScale: 0.55,
+        colorScale: 1.0,
         offsetY: 0,
+        // pitchY lifts all procedural gameplay elements (players, ball, goals,
+        // shadows) by this many world units to match where the GLB's grass
+        // surface actually sits — tweak per stadium when bodies sink into the
+        // imported pitch mesh.
+        pitchY: 2.0,
+        visualPlayerScale: 1.2,
         nativePitch: true,
         fieldCutout: false,
         pitchBrighten: 1.9,
         cutawayFrontZ: null,
         gameplayScale: 1.0,
-        rotateY: Math.PI / 2,
+        rotateY: 0,
         outerGroundColor: 0x5fa84f,
-        cameraPos: [0, 26, 58],
-        cameraLookAt: [0, 1, 0],
+        cameraPos: [0, 28, 60],
+        cameraLookAt: [0, 2, 0],
         cameraFov: 48,
-        cameraCutaway: true,
+        cameraCutaway: false,
     },
     {
         id: 'otkritie-arena',

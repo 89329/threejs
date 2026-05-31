@@ -7,7 +7,7 @@
 function initThree() {
     if (!scene) {
         scene = new THREE.Scene();
-        scene.fog = new THREE.Fog(COLORS.fogColor, 130, 320);
+        scene.fog = new THREE.Fog(COLORS.fogColor, 250, 500);
 
         camera = new THREE.PerspectiveCamera(44, window.innerWidth / window.innerHeight, 0.1, 1000);
 
@@ -361,7 +361,9 @@ function buildGoals() {
 function makePlayer(color, isKeeper, controlled) {
     const group = new THREE.Group();
 
-    const bodyMat = new THREE.MeshBasicMaterial({ color: color });
+    // toneMapped:false → bypass the renderer's ACES filmic curve so the team
+    // colours stay saturated red/blue instead of getting washed to pastel.
+    const bodyMat = new THREE.MeshBasicMaterial({ color: color, toneMapped: false });
     const body = new THREE.Mesh(
         new THREE.CylinderGeometry(PLAYER_SIZE/2, PLAYER_SIZE/2 + 0.4, PLAYER_SIZE, 16),
         bodyMat
@@ -375,7 +377,7 @@ function makePlayer(color, isKeeper, controlled) {
     body.castShadow = false;
     group.add(body);
 
-    const headMat = new THREE.MeshBasicMaterial({ color: COLORS.skin });
+    const headMat = new THREE.MeshBasicMaterial({ color: COLORS.skin, toneMapped: false });
     const head = new THREE.Mesh(
         new THREE.SphereGeometry(PLAYER_SIZE * 0.35, 16, 12),
         headMat
@@ -399,7 +401,7 @@ function makePlayer(color, isKeeper, controlled) {
     if (controlled) {
         const ring = new THREE.Mesh(
             new THREE.RingGeometry(PLAYER_SIZE * 0.7, PLAYER_SIZE * 0.95, 32),
-            new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.85, side: THREE.DoubleSide })
+            new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.85, side: THREE.DoubleSide, toneMapped: false })
         );
         ring.rotation.x = -Math.PI / 2;
         ring.position.y = 0.08;
@@ -433,6 +435,7 @@ function buildPlayers() {
     const stadium = getSelectedStadium();
     const visualScale = stadium?.visualPlayerScale ?? 1.0;
     const applyScale = (g) => { if (visualScale !== 1.0) g.scale.setScalar(visualScale); };
+    const pitchY = stadium?.pitchY ?? 0;
 
     // determine which veldspeler is human-controlled per mode
     // Hot-Seat (duo): both veldspelers are human (P1 + P2)
@@ -441,7 +444,7 @@ function buildPlayers() {
 
     // RED team
     const redKeeper = makePlayer(COLORS.team1, true, false);
-    redKeeper.position.set(-FIELD_W/2 + 5, 0, 0);
+    redKeeper.position.set(-FIELD_W/2 + 5, pitchY, 0);
     redKeeper.team = 1;
     redKeeper.isKeeper = true;
     redKeeper.homePosition = { x: -FIELD_W/2 + 5, z: 0 };
@@ -452,7 +455,7 @@ function buildPlayers() {
     // is this team's veldspeler human or bot?
     const redIsHuman = isCpu ? STATE.p1.team === 1 : true;
     const redField = makePlayer(COLORS.team1, false, redIsHuman);
-    redField.position.set(-25, 0, 0);
+    redField.position.set(-25, pitchY, 0);
     redField.team = 1;
     redField.isKeeper = false;
     redField.homePosition = { x: -25, z: 0 };
@@ -463,7 +466,7 @@ function buildPlayers() {
 
     // BLUE team
     const blueKeeper = makePlayer(COLORS.team2, true, false);
-    blueKeeper.position.set(FIELD_W/2 - 5, 0, 0);
+    blueKeeper.position.set(FIELD_W/2 - 5, pitchY, 0);
     blueKeeper.team = 2;
     blueKeeper.isKeeper = true;
     blueKeeper.homePosition = { x: FIELD_W/2 - 5, z: 0 };
@@ -473,7 +476,7 @@ function buildPlayers() {
 
     const blueIsHuman = isCpu ? STATE.p1.team === 2 : true;
     const blueField = makePlayer(COLORS.team2, false, blueIsHuman);
-    blueField.position.set(25, 0, 0);
+    blueField.position.set(25, pitchY, 0);
     blueField.team = 2;
     blueField.isKeeper = false;
     blueField.homePosition = { x: 25, z: 0 };
@@ -493,20 +496,22 @@ function buildPlayers() {
 
 function buildBall() {
     const geo = new THREE.SphereGeometry(BALL_SIZE, 24, 18);
-    const mat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false });
     ball = new THREE.Mesh(geo, mat);
-    ball.position.set(0, BALL_SIZE, 0);
+    const stadium = getSelectedStadium();
+    const pitchY = stadium?.pitchY ?? 0;
+    ball.position.set(0, BALL_SIZE + pitchY, 0);
     ball.castShadow = true;
     ball.velocity = { x: 0, y: 0, z: 0 };
     // Match the player visualPlayerScale so ball + figures stay in proportion.
-    const stadium = getSelectedStadium();
     const visualScale = stadium?.visualPlayerScale ?? 1.0;
     if (visualScale !== 1.0) ball.scale.setScalar(visualScale);
     scene.add(ball);
 }
 
 function positionForKickoff() {
-    ball.position.set(0, BALL_SIZE, 0);
+    const pitchY = getSelectedStadium()?.pitchY ?? 0;
+    ball.position.set(0, BALL_SIZE + pitchY, 0);
     ball.velocity = { x: 0, y: 0, z: 0 };
 
     // clear any in-flight keeper holds and player charges
@@ -519,15 +524,15 @@ function positionForKickoff() {
     });
 
     // home positions
-    team1Players[0].position.set(-FIELD_W/2 + 5, 0, 0);   // red keeper
-    team2Players[0].position.set( FIELD_W/2 - 5, 0, 0);   // blue keeper
+    team1Players[0].position.set(-FIELD_W/2 + 5, pitchY, 0);   // red keeper
+    team2Players[0].position.set( FIELD_W/2 - 5, pitchY, 0);   // blue keeper
 
     if (STATE.kickoffTeam === 1) {
-        team1Players[1].position.set(-3, 0, 0);
-        team2Players[1].position.set( 18, 0, 0);
+        team1Players[1].position.set(-3, pitchY, 0);
+        team2Players[1].position.set( 18, pitchY, 0);
     } else {
-        team1Players[1].position.set(-18, 0, 0);
-        team2Players[1].position.set( 3, 0, 0);
+        team1Players[1].position.set(-18, pitchY, 0);
+        team2Players[1].position.set( 3, pitchY, 0);
     }
 }
 

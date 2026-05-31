@@ -792,20 +792,22 @@ function buildStadium() {
                             m.emissiveIntensity = 1.0;
                         }
                         m.roughness = Math.max(0.85, m.roughness ?? 1);
-                        // kill baked-in daylight shadows (lightmap + AO + emissive)
-                        // — this is what was missing for Old Trafford. Roof &
-                        // catwalk shadows are typically baked into the lightmap
-                        // channel of the pitch material, NOT the diffuse map, so
-                        // no amount of pixel-tweaking on m.map could remove them.
-                        const beforeLM = m.lightMapIntensity;
-                        const beforeAO = m.aoMapIntensity;
-                        const beforeEM = m.emissiveIntensity;
-                        if (m.lightMap) m.lightMapIntensity = 0;
-                        if (m.aoMap) m.aoMapIntensity = 0;
-                        // preserve emissive intensity when we just set pitchEmissive on the primary pitch mesh
-                        if (m.emissive && !(isPrimaryPitch && pitchEmissive)) m.emissiveIntensity = 0;
-                        m.needsUpdate = true;
-                        console.log(`[pitch-channels] ${stadium.id}:${c.name || 'unnamed'}: lightMap=${!!m.lightMap}(${beforeLM}→0) aoMap=${!!m.aoMap}(${beforeAO}→0) emissive=${beforeEM}→0`);
+                        // Only kill baked lightMap/aoMap/emissive on the PRIMARY
+                        // pitch mesh. Previously this killed it on every flat-low
+                        // candidate, which on Bombonera matched tribune-seat rows
+                        // and stripped the GLB's baked stadium lighting — the
+                        // iconic yellow back-wall + blue seats rendered as flat
+                        // pastel instead of vivid.
+                        if (isPrimaryPitch) {
+                            const beforeLM = m.lightMapIntensity;
+                            const beforeAO = m.aoMapIntensity;
+                            const beforeEM = m.emissiveIntensity;
+                            if (m.lightMap) m.lightMapIntensity = 0;
+                            if (m.aoMap) m.aoMapIntensity = 0;
+                            if (m.emissive && !pitchEmissive) m.emissiveIntensity = 0;
+                            m.needsUpdate = true;
+                            console.log(`[pitch-channels] ${stadium.id}:${c.name || 'unnamed'}: lightMap=${!!m.lightMap}(${beforeLM}→0) aoMap=${!!m.aoMap}(${beforeAO}→0) emissive=${beforeEM}→0`);
+                        }
                     }
 
                     // v15: REPLACE the diffuse map outright with our procedural
