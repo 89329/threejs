@@ -236,7 +236,7 @@ const STADIUM_PREVIEW = (() => {
         const footprintR = Math.hypot(size.x, size.z) * 0.5;
         const distH = footprintR / Math.tan(halfFovH);
         const distV = (size.y * 0.5 + footprintR * Math.sin(elev)) / Math.tan(halfFovV);
-        const dist  = Math.max(distH, distV, 1) * 1.05;
+        const dist  = Math.max(distH, distV, 1) * 0.96;
 
         const off  = new THREE.Vector3(
             Math.sin(azim) * Math.cos(elev),
@@ -244,8 +244,12 @@ const STADIUM_PREVIEW = (() => {
             Math.cos(azim) * Math.cos(elev),
         ).multiplyScalar(dist);
 
-        controls.target.copy(center);
-        camera.position.copy(center).add(off);
+        // aim a little under the middle: seen from above the near wall hangs
+        // low in the frame, and this lifts the whole stadium clear of the name bar
+        const aim = center.clone();
+        aim.y -= footprintR * 0.16;
+        controls.target.copy(aim);
+        camera.position.copy(aim).add(off);
 
         // adapt clipping to the model's scale so we can't accidentally clip
         // tiny models (mm-scale exports) or huge ones (km-scale exports)

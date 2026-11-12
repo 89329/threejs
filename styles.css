@@ -1,8 +1,9 @@
 /* =====================================================
    PITCH ROYALE
-   Flat matchday look: mown grass, chalk lines, white team
-   sheets and a black scoreboard. One line weight (--line),
-   two typefaces, no gradients, glows or drop shadows.
+   The match and full time: mown grass, chalk lines and a
+   black scoreboard. The menus before kick-off are that
+   scoreboard up close (see MENUS). No gradients, glows
+   or drop shadows anywhere.
    ===================================================== */
 
 :root {
@@ -33,12 +34,16 @@ body {
     overflow: hidden;
     color: #fff;
     font: 500 17px/1.45 var(--font-text);
+    background: #0a0a0a;
+    -webkit-font-smoothing: antialiased;
+}
+/* full time is played out on the grass */
+#over-screen {
     background: var(--grass) repeating-linear-gradient(
         90deg,
         transparent 0 var(--stripe),
         var(--grass-dark) var(--stripe) calc(var(--stripe) * 2)
     );
-    -webkit-font-smoothing: antialiased;
 }
 
 button, input { font: inherit; color: inherit; }
@@ -179,359 +184,6 @@ kbd {
     letter-spacing: .02em;
     text-transform: uppercase;
 }
-
-/* =====================================================
-   SPLASH
-   ===================================================== */
-#loading-screen.active { display: grid; place-items: center; }
-.splash { display: grid; justify-items: center; gap: 22px; }
-.splash__circle {
-    display: grid;
-    place-items: center;
-    width: 170px;
-    height: 170px;
-    border: var(--line) solid #fff;
-    border-radius: 50%;
-}
-.splash__circle svg { width: 46px; height: 46px; }
-.splash__name {
-    font: 800 40px/1 var(--font-cond);
-    text-transform: uppercase;
-}
-
-/* =====================================================
-   LAUNCH
-   ===================================================== */
-#launch-screen.active {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 0 clamp(24px, 5vw, 80px);
-    padding: clamp(24px, 5vh, 56px) var(--gutter);
-}
-.launch__copy { max-width: 660px; }
-.launch__title {
-    margin: 0;
-    font: 800 clamp(84px, 13vw, 216px)/.82 var(--font-cond);
-    letter-spacing: -.01em;
-    text-transform: uppercase;
-}
-.launch__lead {
-    max-width: 24em;
-    margin: 28px 0 34px;
-    font-size: clamp(18px, 1.6vw, 23px);
-    line-height: 1.4;
-}
-.launch__menu {
-    display: grid;
-    gap: 12px;
-    width: min(100%, 400px);
-}
-.launch__menu .btn {
-    justify-content: space-between;
-    width: 100%;
-    text-align: left;
-}
-
-/* lineup board: the pitch as TV shows it before kick-off */
-.lineup {
-    display: block;
-    width: auto;
-    height: min(86vh, 900px);
-    aspect-ratio: 704 / 1110;
-}
-.lineup .chalk { fill: none; stroke: #fff; stroke-width: 4; }
-.lineup .spot  { fill: #fff; }
-.lineup .goal  { fill: none; stroke: #fff; stroke-width: 4; }
-.lineup .run   { fill: none; stroke: #fff; stroke-width: 4; stroke-dasharray: 14 12; }
-.lineup .red   { fill: var(--red); }
-.lineup .blue  { fill: var(--blue); }
-.lineup .keeper { stroke: var(--yellow); stroke-width: 7; }
-.lineup text {
-    fill: #fff;
-    font-family: var(--font-cond);
-    font-weight: 700;
-}
-.lineup .num  { font-size: 34px; text-anchor: middle; }
-.lineup .name { font-size: 25px; letter-spacing: .02em; text-transform: uppercase; }
-
-/* =====================================================
-   SETUP — the two halves of the pitch
-   ===================================================== */
-.seg {
-    display: inline-flex;
-    border: var(--line) solid #fff;
-}
-.seg__btn {
-    height: 46px;
-    padding: 0 20px;
-    border: 0;
-    background: none;
-    color: #fff;
-    font: 700 19px/1 var(--font-cond);
-    letter-spacing: .03em;
-    text-transform: uppercase;
-}
-.seg__btn + .seg__btn { border-left: var(--line) solid #fff; }
-.seg__btn:hover { text-decoration: underline; text-decoration-thickness: 3px; text-underline-offset: 6px; }
-.seg__btn.active { background: #fff; color: var(--ink); text-decoration: none; }
-
-.halves {
-    flex: 1;
-    position: relative;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-    align-items: center;
-    justify-items: center;
-    gap: 0 clamp(12px, 2vw, 32px);
-    padding: clamp(20px, 4vh, 44px) clamp(16px, 3vw, 44px);
-    border: var(--line) solid #fff;
-}
-/* halfway line */
-.halves::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 50%;
-    width: var(--line);
-    background: #fff;
-    transform: translateX(-50%);
-}
-/* centre circle, with the swap button on the centre spot */
-.halves__mid {
-    position: relative;
-    display: grid;
-    place-items: center;
-    width: clamp(150px, 16vw, 210px);
-    aspect-ratio: 1;
-    border: var(--line) solid #fff;
-    border-radius: 50%;
-}
-.swap {
-    display: grid;
-    place-content: center;
-    justify-items: center;
-    gap: 2px;
-    width: 86px;
-    height: 86px;
-    border: 0;
-    border-radius: 50%;
-    background: #fff;
-    color: var(--ink);
-    font: 700 15px/1 var(--font-cond);
-    letter-spacing: .04em;
-    text-transform: uppercase;
-    transition: background-color .12s;
-}
-.swap svg { width: 26px; height: 26px; }
-.swap:hover { background: var(--yellow); }
-
-.team-card {
-    position: relative;
-    width: min(100%, 420px);
-    padding: 22px 24px 24px;
-    border-top: 12px solid var(--team);
-    background: var(--paper);
-    color: var(--ink);
-    text-align: left;
-}
-.team-card__head {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    margin-bottom: 18px;
-}
-.shirt {
-    flex: none;
-    width: 58px;
-    height: 51px;
-    fill: var(--team);
-}
-.team-card__side {
-    font: 800 34px/1 var(--font-cond);
-    text-transform: uppercase;
-}
-.team-card__color { color: var(--muted); font-size: 16px; }
-
-.field { display: block; margin-bottom: 18px; }
-.field__label {
-    display: block;
-    margin-bottom: 6px;
-    font-weight: 600;
-    font-size: 16px;
-    line-height: 1.2;
-}
-.field__input {
-    width: 100%;
-    height: 54px;
-    padding: 0 14px;
-    border: var(--line) solid var(--ink);
-    border-radius: 0;
-    background: #fff;
-    color: var(--ink);
-    font: 700 28px/1 var(--font-cond);
-    text-transform: uppercase;
-}
-.field__input::placeholder { color: #9aa197; }
-.field__input:focus-visible { outline: 3px solid var(--team); outline-offset: 2px; }
-
-.keys { display: grid; gap: 8px; margin: 0; }
-.keys > div {
-    display: grid;
-    grid-template-columns: 100px minmax(0, 1fr);
-    align-items: center;
-    gap: 10px;
-}
-.keys dt { color: var(--muted); font-size: 15px; }
-.keys dd {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 4px;
-    margin: 0;
-    font-size: 15px;
-}
-.keys__note { margin: 12px 0 0; color: var(--muted); font-size: 15px; }
-
-.team-card__cpu-name {
-    margin: 0 0 6px;
-    font: 800 34px/1 var(--font-cond);
-    text-transform: uppercase;
-}
-.team-card__cpu p:last-child { margin: 0; color: var(--muted); }
-
-/* =====================================================
-   TOSS — coin on the centre spot, seen from above
-   ===================================================== */
-.toss {
-    position: relative;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-    align-items: center;
-    gap: clamp(16px, 4vw, 56px);
-    width: 100%;
-    max-width: 920px;
-    margin: 26px 0 18px;
-    padding: 26px 0;
-}
-.toss::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 50%;
-    width: var(--line);
-    background: #fff;
-    transform: translateX(-50%);
-}
-.toss__circle {
-    position: relative;
-    display: grid;
-    place-items: center;
-    width: clamp(220px, 25vw, 300px);
-    aspect-ratio: 1;
-    border: var(--line) solid #fff;
-    border-radius: 50%;
-}
-
-.pick-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 14px;
-    min-width: 190px;
-    height: 72px;
-    padding: 0 26px 0 18px;
-    border: var(--line) solid #fff;
-    background: transparent;
-    color: #fff;
-    font: 800 32px/1 var(--font-cond);
-    text-transform: uppercase;
-    transition: background-color .12s, color .12s;
-}
-.pick-btn--heads { justify-self: end; }
-.pick-btn--tails { justify-self: start; }
-.pick-btn__coin {
-    flex: none;
-    width: 38px;
-    height: 38px;
-    border: 3px solid var(--ink);
-    border-radius: 50%;
-}
-.pick-btn--heads .pick-btn__coin { background: var(--yellow); }
-.pick-btn--tails .pick-btn__coin { background: var(--ink); border-color: #fff; }
-.pick-btn:hover:not(:disabled),
-.pick-btn.chosen { background: #fff; color: var(--ink); }
-.pick-btn:disabled:not(.chosen) { opacity: .45; }
-
-.coin-arena {
-    position: relative;
-    width: 150px;
-    height: 150px;
-    perspective: 700px;
-}
-.coin-shadow {
-    position: absolute;
-    inset: 0;
-    border-radius: 50%;
-    background: rgba(0, 0, 0, .28);
-    transform: translate(5px, 7px);
-}
-.coin {
-    position: absolute;
-    inset: 0;
-    transform-style: preserve-3d;
-}
-.coin__face {
-    position: absolute;
-    inset: 0;
-    display: grid;
-    place-items: center;
-    border: 7px solid var(--ink);
-    border-radius: 50%;
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
-    font: 800 38px/1 var(--font-cond);
-    text-transform: uppercase;
-}
-.coin__face--heads { background: var(--yellow); color: var(--ink); }
-.coin__face--tails { background: var(--ink); border-color: #fff; color: #fff; transform: rotateX(180deg); }
-/* at rest only one side can be up; don't lean on backface-visibility for that */
-.coin:not(.flipping):not(.land-tails) .coin__face--tails,
-.coin.land-tails .coin__face--heads { visibility: hidden; }
-
-/* duration must match COIN_FLIP_MS in game.ui.js */
-.coin.flipping    { animation: coin-toss 2.4s forwards; }
-.coin.land-heads  { transform: rotateX(0deg); }
-.coin.land-tails  { transform: rotateX(180deg); }
-.coin-arena:has(.flipping) .coin-shadow { animation: coin-shadow 2.4s forwards; }
-
-/* the camera looks straight down, so a tossed coin grows as it rises */
-@keyframes coin-toss {
-    0%   { transform: scale(1) rotateX(0deg); animation-timing-function: cubic-bezier(.15, .6, .35, 1); }
-    50%  { transform: scale(1.7) rotateX(calc(var(--final-rot, 3600deg) * .55)); animation-timing-function: cubic-bezier(.65, 0, .85, .4); }
-    100% { transform: scale(1) rotateX(var(--final-rot, 3600deg)); }
-}
-@keyframes coin-shadow {
-    0%   { transform: translate(5px, 7px) scale(1); animation-timing-function: cubic-bezier(.15, .6, .35, 1); }
-    50%  { transform: translate(48px, 64px) scale(.85); animation-timing-function: cubic-bezier(.65, 0, .85, .4); }
-    100% { transform: translate(5px, 7px) scale(1); }
-}
-
-.coin-result {
-    display: grid;
-    align-content: start;
-    gap: 4px;
-    min-height: 78px;
-    visibility: hidden;
-}
-.coin-result.show { visibility: visible; }
-.coin-result__line { font-size: 18px; }
-.coin-result__text {
-    font: 800 clamp(30px, 3.6vw, 46px)/1 var(--font-cond);
-    text-transform: uppercase;
-}
-.toss__cta { min-height: 58px; margin-top: 14px; }
 
 /* =====================================================
    MATCH — HUD over the 3D scene
@@ -744,168 +396,6 @@ kbd {
 .pause-overlay__sub { margin-bottom: 10px; }
 
 /* =====================================================
-   STADIUM PICKER
-   ===================================================== */
-.stadium {
-    flex: 1;
-    display: grid;
-    grid-template-columns: minmax(0, 1.55fr) minmax(300px, 1fr);
-    gap: 20px;
-    min-height: 420px;
-    margin-top: 18px;
-}
-.stadium__view {
-    position: relative;
-    min-height: 320px;
-    overflow: hidden;
-    border: var(--line) solid #fff;
-    background: #131813;
-}
-.viewer {
-    position: absolute;
-    inset: 0;
-    cursor: grab;
-}
-.viewer.is-grabbing { cursor: grabbing; }
-/* class is put on the canvas by STADIUM_PREVIEW */
-.stadium-card__viewer-canvas {
-    position: absolute;
-    inset: 0;
-    display: block;
-    width: 100%;
-    height: 100%;
-    opacity: 0;
-}
-.viewer.is-ready .stadium-card__viewer-canvas { opacity: 1; }
-
-.viewer__msg {
-    position: absolute;
-    inset: 0;
-    display: none;
-    place-items: center;
-    margin: 0;
-    padding: 0 24px;
-    font: 700 24px/1.1 var(--font-cond);
-    letter-spacing: .03em;
-    text-align: center;
-    text-transform: uppercase;
-}
-.viewer.is-loading .viewer__msg--loading,
-.viewer.is-failed .viewer__msg--failed,
-.viewer.is-unsupported .viewer__msg--failed { display: grid; }
-/* download progress, written to data-progress by STADIUM_PREVIEW */
-.viewer.is-loading::after {
-    content: attr(data-progress);
-    position: absolute;
-    top: calc(50% + 20px);
-    left: 0;
-    right: 0;
-    font: 700 20px/1 var(--font-cond);
-    font-variant-numeric: tabular-nums;
-    text-align: center;
-}
-.viewer__hint {
-    position: absolute;
-    top: 12px;
-    right: 14px;
-    margin: 0;
-    color: #c9cfc7;
-    font-size: 14px;
-    pointer-events: none;
-}
-
-/* lower third, like a TV caption */
-.caption {
-    position: absolute;
-    left: 0;
-    bottom: 22px;
-    display: grid;
-    justify-items: start;
-    max-width: 90%;
-    pointer-events: none;
-}
-.caption__name {
-    margin: 0;
-    padding: 8px 18px 9px;
-    background: #fff;
-    color: var(--ink);
-    font: 800 clamp(34px, 3.6vw, 54px)/1 var(--font-cond);
-    text-transform: uppercase;
-}
-.caption__sub {
-    margin: 0;
-    padding: 7px 18px 8px;
-    background: var(--yellow);
-    color: var(--ink);
-    font-weight: 600;
-    font-size: 17px;
-    line-height: 1.2;
-}
-
-/* stadium list, set like a league table */
-.stadium__side {
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-    background: var(--paper);
-    color: var(--ink);
-}
-.stadium-list__head,
-.stadium-row {
-    display: grid;
-    grid-template-columns: 30px minmax(0, 1fr) auto 68px;
-    align-items: center;
-    gap: 8px;
-    padding: 0 16px;
-}
-.stadium-list__head {
-    flex: none;
-    height: 40px;
-    border-bottom: 2px solid var(--ink);
-    color: var(--muted);
-    font-weight: 600;
-    font-size: 14px;
-}
-.stadium-list__head span:last-child { text-align: right; }
-.stadium-list { flex: 1; min-height: 0; overflow-y: auto; }
-.stadium-row {
-    width: 100%;
-    height: 44px;
-    border: 0;
-    border-bottom: 1px solid var(--rule);
-    background: none;
-    color: var(--ink);
-    font: 600 21px/1 var(--font-cond);
-    text-align: left;
-}
-.stadium-row__num { color: var(--muted); font-variant-numeric: tabular-nums; }
-.stadium-row__name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.stadium-row__cap { grid-column: 4; font-variant-numeric: tabular-nums; text-align: right; }
-.stadium-row__tag {
-    grid-column: 3;
-    display: none;
-    padding: 3px 7px 4px;
-    background: var(--yellow);
-    color: var(--ink);
-    font: 700 13px/1 var(--font-cond);
-    letter-spacing: .04em;
-    text-transform: uppercase;
-}
-.stadium-row.is-chosen .stadium-row__tag { display: inline-block; }
-.stadium-row:hover { background: var(--paper-dim); }
-.stadium-row.is-active { background: var(--ink); color: #fff; }
-.stadium-row.is-active .stadium-row__num { color: #b9c0b6; }
-.stadium-row:focus-visible { outline-offset: -3px; }
-.stadium-row.is-active:focus-visible { outline-color: var(--yellow); }
-
-.stadium__foot {
-    flex: none;
-    padding: 16px;
-    border-top: 2px solid var(--ink);
-}
-.stadium__foot .btn { width: 100%; }
-
-/* =====================================================
    FULL TIME
    ===================================================== */
 .final {
@@ -954,35 +444,549 @@ kbd {
    SMALLER SCREENS
    ===================================================== */
 @media (max-width: 900px) {
-    #launch-screen.active { grid-template-columns: minmax(0, 1fr); }
-    .lineup { display: none; }
-
-    .halves { grid-template-columns: minmax(0, 1fr); gap: 14px; }
-    .halves::before { display: none; }
-    .halves__mid { width: auto; aspect-ratio: auto; border: 0; }
-
-    .toss { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-    .toss::before { display: none; }
-    .toss__circle { grid-column: 1 / -1; grid-row: 1; justify-self: center; }
-    .pick-btn { justify-self: stretch; justify-content: center; min-width: 0; }
-
-    .stadium { grid-template-columns: minmax(0, 1fr); }
-    .stadium-list { max-height: 264px; }
-
     .hud-keys { display: none; }
     .scorebug { left: 18px; transform: none; }
 }
 
 @media (max-height: 760px) {
     .title { font-size: clamp(40px, 5vw, 64px); }
-    .team-card { padding: 16px 20px 18px; }
-    .team-card__head { margin-bottom: 12px; }
-    .field { margin-bottom: 12px; }
-    .toss { margin: 12px 0 8px; padding: 14px 0; }
-    .toss__circle { width: clamp(200px, 22vw, 250px); }
-    .coin-result { min-height: 66px; }
     .final { margin: 18px 0 16px; }
-    .stadium-row { height: 34px; font-size: 19px; }
+}
+
+/* =====================================================
+   MENUS — everything before kick-off
+   A stadium scoreboard: a black panel, amber pixel
+   letters, the two team colours. Scoped to .menu so the
+   match and the full-time screen keep their own look.
+   ===================================================== */
+.menu {
+    --amber:  #ffb000;
+    --amber-dim: #7a5500;
+    --panel:  #111111;
+    --pit:    #0a0a0a;
+    --edge:   #2b2b2b;
+    --dim:    #8a8a8a;
+    --text:   #e8e8e8;
+    --pad:    clamp(20px, 3.2vw, 46px);
+    --font-led:  'Silkscreen', 'Courier New', monospace;
+    --font-menu: 'Space Grotesk', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+
+    inset: clamp(10px, 2.4vw, 36px);
+    border: 4px solid var(--edge);
+    background: var(--panel);
+    color: var(--text);
+    font: 500 17px/1.45 var(--font-menu);
+}
+.menu :focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+
+.menu .topbar {
+    max-width: none;
+    padding: var(--pad) var(--pad) 0;
+    color: var(--dim);
+}
+.menu .topbar__brand,
+.menu .back {
+    font: 400 20px/1 var(--font-led);
+    letter-spacing: 0;
+}
+.menu .back { color: var(--dim); }
+.menu .back svg { width: 18px; height: 18px; }
+.menu .back:hover { color: var(--amber); text-decoration: none; }
+
+.menu .page {
+    max-width: none;
+    padding: 18px var(--pad) var(--pad);
+}
+.menu .title {
+    color: var(--amber);
+    font: 400 clamp(40px, 5.6vw, 84px)/1 var(--font-led);
+    letter-spacing: 0;
+}
+.menu .lead { color: var(--text); }
+
+/* buttons: amber block, or amber outline */
+.menu .btn {
+    min-height: 64px;
+    padding: 0 22px;
+    border: 4px solid var(--amber);
+    background: var(--amber);
+    color: var(--pit);
+    font: 400 24px/1 var(--font-led);
+    letter-spacing: 0;
+}
+.menu .btn:hover { background: #fff; border-color: #fff; color: var(--pit); }
+.menu .btn--line { background: transparent; color: var(--amber); }
+.menu .btn--line:hover { background: var(--amber); border-color: var(--amber); color: var(--pit); }
+.menu .btn__meta {
+    color: #fff;
+    font: 400 15px/1 var(--font-led);
+    text-transform: uppercase;
+}
+.menu .btn--line:hover .btn__meta { color: var(--pit); }
+
+.menu kbd {
+    min-width: 34px;
+    height: 34px;
+    padding: 0 8px;
+    border: 2px solid var(--amber);
+    border-radius: 0;
+    background: none;
+    color: var(--amber);
+    font: 400 14px/1 var(--font-led);
+    letter-spacing: 0;
+}
+
+/* ---------- splash ---------- */
+#loading-screen.active { display: grid; place-items: center; }
+.splash__name {
+    color: var(--amber);
+    font: 400 clamp(34px, 6vw, 84px)/1 var(--font-led);
+    text-transform: uppercase;
+}
+
+/* ---------- start ---------- */
+#launch-screen.active { display: flex; }
+.launch {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 24px;
+    padding: var(--pad);
+}
+.launch__title {
+    margin: 0;
+    color: var(--amber);
+    font: 400 clamp(54px, min(11.5vw, 21vh), 190px)/1 var(--font-led);
+    text-transform: uppercase;
+}
+/* the scoreboard as it stands before kick-off */
+.board {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px clamp(14px, 2vw, 28px);
+    font: 400 clamp(30px, 4.4vw, 64px)/1.3 var(--font-led);
+    text-transform: uppercase;
+}
+.board__team { padding: 0 .28em; color: #fff; }
+.board__team--red  { background: var(--red); }
+.board__team--blue { background: var(--blue); }
+.board__score { color: var(--amber); }
+.board__clock { color: var(--dim); font-size: .5em; }
+
+.launch__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 520px);
+    align-items: end;
+    gap: 20px clamp(24px, 5vw, 80px);
+}
+.launch__lead {
+    max-width: 26em;
+    margin: 0;
+    color: var(--text);
+    font-size: clamp(18px, 1.6vw, 23px);
+    line-height: 1.4;
+}
+.launch__menu { display: grid; gap: 14px; }
+.launch__menu .btn { justify-content: space-between; width: 100%; text-align: left; }
+
+/* ---------- team sheet ---------- */
+.menu .seg { display: inline-flex; border: 4px solid var(--edge); }
+.menu .seg__btn {
+    height: 46px;
+    padding: 0 18px;
+    border: 0;
+    background: none;
+    color: var(--dim);
+    font: 400 17px/1 var(--font-led);
+    text-transform: uppercase;
+}
+.menu .seg__btn + .seg__btn { border-left: 4px solid var(--edge); }
+.menu .seg__btn:hover { color: var(--amber); }
+.menu .seg__btn.active { background: var(--amber); color: var(--pit); }
+
+.halves {
+    flex: 1;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: start;
+    gap: 0 clamp(14px, 2vw, 30px);
+}
+.halves__mid { padding-top: 26px; }
+.swap {
+    display: grid;
+    justify-items: center;
+    gap: 6px;
+    padding: 12px 12px 10px;
+    border: 4px solid var(--amber);
+    background: none;
+    color: var(--amber);
+    font: 400 14px/1 var(--font-led);
+    text-transform: uppercase;
+}
+.swap svg { width: 24px; height: 24px; }
+.swap:hover { background: var(--amber); color: var(--pit); }
+
+.team-card {
+    padding-top: 18px;
+    border-top: 8px solid var(--team);
+    text-align: left;
+}
+.team-card__head { margin-bottom: 18px; }
+.shirt { display: none; }
+.team-card__side {
+    color: #fff;
+    font: 400 clamp(34px, 3.8vw, 54px)/1.1 var(--font-led);
+    text-transform: uppercase;
+}
+.team-card__color { color: var(--dim); font-size: 16px; }
+
+.field { display: block; margin-bottom: 18px; }
+.field__label { display: block; margin-bottom: 8px; color: var(--dim); font-size: 15px; }
+.field__input {
+    width: 100%;
+    height: 68px;
+    padding: 0 16px;
+    border: 4px solid var(--edge);
+    border-radius: 0;
+    background: var(--pit);
+    color: var(--amber);
+    font: 400 30px/1 var(--font-led);
+    text-transform: uppercase;
+    caret-color: var(--amber);
+}
+.field__input::placeholder { color: var(--amber-dim); }
+.field__input:focus-visible { border-color: var(--amber); outline: 0; }
+
+.keys { display: grid; margin: 0; }
+.keys > div {
+    display: grid;
+    grid-template-columns: 130px minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    padding: 9px 0;
+    border-top: 2px dotted var(--edge);
+}
+.keys dt { color: var(--dim); font-size: 16px; }
+.keys dd {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    font-size: 15px;
+}
+.keys__note { margin: 12px 0 0; color: var(--dim); font-size: 15px; }
+.team-card__cpu-name {
+    margin: 0 0 8px;
+    color: var(--amber);
+    font: 400 30px/1.1 var(--font-led);
+    text-transform: uppercase;
+}
+.team-card__cpu p:last-child { margin: 0; color: var(--dim); }
+.menu .page__foot { justify-content: flex-end; }
+.menu .page__foot .btn { min-width: min(100%, 340px); justify-content: space-between; }
+
+/* ---------- toss ---------- */
+.toss {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: clamp(16px, 4vw, 56px);
+    width: 100%;
+    max-width: 980px;
+    margin: 26px 0 18px;
+}
+.toss__circle {
+    display: grid;
+    place-items: center;
+    width: clamp(210px, 24vw, 290px);
+    aspect-ratio: 1;
+    border: 4px solid var(--edge);
+    border-radius: 50%;
+    background: var(--pit);
+}
+.pick-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 200px;
+    height: 72px;
+    padding: 0 22px 0 16px;
+    border: 4px solid var(--amber);
+    background: transparent;
+    color: var(--amber);
+    font: 400 28px/1 var(--font-led);
+    text-transform: uppercase;
+}
+.pick-btn--heads { justify-self: end; }
+.pick-btn--tails { justify-self: start; }
+.pick-btn__coin {
+    flex: none;
+    width: 34px;
+    height: 34px;
+    border: 4px solid var(--amber);
+    border-radius: 50%;
+}
+.pick-btn--heads .pick-btn__coin { background: var(--amber); }
+.pick-btn:hover:not(:disabled),
+.pick-btn.chosen { background: var(--amber); color: var(--pit); }
+.pick-btn:hover:not(:disabled) .pick-btn__coin,
+.pick-btn.chosen .pick-btn__coin { border-color: var(--pit); }
+.pick-btn--heads:hover:not(:disabled) .pick-btn__coin,
+.pick-btn--heads.chosen .pick-btn__coin { background: var(--pit); }
+.pick-btn:disabled:not(.chosen) { border-color: var(--edge); color: var(--dim); }
+.pick-btn:disabled:not(.chosen) .pick-btn__coin { border-color: var(--edge); background: none; }
+
+.coin-arena {
+    position: relative;
+    width: 150px;
+    height: 150px;
+    perspective: 700px;
+}
+.coin-shadow { display: none; }
+.coin {
+    position: absolute;
+    inset: 0;
+    transform-style: preserve-3d;
+}
+.coin__face {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    border: 6px solid var(--amber);
+    border-radius: 50%;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    font: 400 30px/1 var(--font-led);
+    text-transform: uppercase;
+}
+.coin__face--heads { background: var(--amber); color: var(--pit); }
+.coin__face--tails { background: var(--panel); color: var(--amber); transform: rotateX(180deg); }
+/* at rest only one side can be up; don't lean on backface-visibility for that */
+.coin:not(.flipping):not(.land-tails) .coin__face--tails,
+.coin.land-tails .coin__face--heads { visibility: hidden; }
+
+/* duration must match COIN_FLIP_MS in game.ui.js */
+.coin.flipping    { animation: coin-toss 2.4s forwards; }
+.coin.land-heads  { transform: rotateX(0deg); }
+.coin.land-tails  { transform: rotateX(180deg); }
+@keyframes coin-toss {
+    0%   { transform: scale(1) rotateX(0deg); animation-timing-function: cubic-bezier(.15, .6, .35, 1); }
+    50%  { transform: scale(1.6) rotateX(calc(var(--final-rot, 3600deg) * .55)); animation-timing-function: cubic-bezier(.65, 0, .85, .4); }
+    100% { transform: scale(1) rotateX(var(--final-rot, 3600deg)); }
+}
+
+.coin-result {
+    display: grid;
+    align-content: start;
+    gap: 8px;
+    min-height: 84px;
+    visibility: hidden;
+}
+.coin-result.show { visibility: visible; }
+.coin-result__line { color: var(--dim); font-size: 18px; }
+.coin-result__text {
+    color: #fff;
+    font: 400 clamp(26px, 3.2vw, 44px)/1.1 var(--font-led);
+    text-transform: uppercase;
+}
+.toss__cta { min-height: 64px; margin-top: 14px; }
+
+/* ---------- stadium picker ---------- */
+.stadium {
+    flex: 1;
+    display: grid;
+    grid-template-columns: minmax(0, 1.55fr) minmax(300px, 1fr);
+    gap: 24px;
+    min-height: 400px;
+    margin-top: 18px;
+}
+.stadium__view {
+    position: relative;
+    min-height: 320px;
+    overflow: hidden;
+    border: 4px solid var(--edge);
+    background: var(--pit);
+}
+.stadium__view { --capbar: clamp(84px, 11vh, 112px); }
+/* the model gets everything above the name bar */
+.viewer { position: absolute; inset: 0 0 var(--capbar) 0; cursor: grab; }
+.viewer.is-grabbing { cursor: grabbing; }
+/* class is put on the canvas by STADIUM_PREVIEW */
+.stadium-card__viewer-canvas {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+}
+.viewer.is-ready .stadium-card__viewer-canvas { opacity: 1; }
+.viewer__msg {
+    position: absolute;
+    inset: 0;
+    display: none;
+    place-items: center;
+    margin: 0;
+    padding: 0 24px;
+    color: var(--amber);
+    font: 400 20px/1.2 var(--font-led);
+    text-align: center;
+    text-transform: uppercase;
+}
+.viewer.is-loading .viewer__msg--loading,
+.viewer.is-failed .viewer__msg--failed,
+.viewer.is-unsupported .viewer__msg--failed { display: grid; }
+/* download progress, written to data-progress by STADIUM_PREVIEW */
+.viewer.is-loading::after {
+    content: attr(data-progress);
+    position: absolute;
+    top: calc(50% + 22px);
+    left: 0;
+    right: 0;
+    color: #fff;
+    font: 400 18px/1 var(--font-led);
+    text-align: center;
+}
+.viewer__hint {
+    position: absolute;
+    top: 14px;
+    left: 18px;
+    margin: 0;
+    color: var(--dim);
+    font-size: 14px;
+    pointer-events: none;
+}
+/* name bar under the model: the stadium on the left, club and seats on the right */
+.caption {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 6px 24px;
+    height: var(--capbar);
+    padding: 0 20px;
+    border-top: 4px solid var(--edge);
+    background: var(--panel);
+    pointer-events: none;
+}
+.caption__name {
+    margin: 0;
+    overflow: hidden;
+    color: var(--amber);
+    font: 400 clamp(26px, 3.3vw, 50px)/1.1 var(--font-led);
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+.caption__sub {
+    display: grid;
+    justify-items: end;
+    gap: 6px;
+    margin: 0;
+    color: var(--text);
+    font-size: 16px;
+    line-height: 1.2;
+    text-align: right;
+}
+.caption__cap {
+    color: #fff;
+    font: 400 clamp(15px, 1.4vw, 20px)/1 var(--font-led);
+    text-transform: uppercase;
+}
+
+.menu .stadium__side {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    border: 4px solid var(--edge);
+    background: var(--pit);
+    color: var(--text);
+}
+.stadium-list__head,
+.stadium-row {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr) auto 84px;
+    align-items: center;
+    gap: 8px;
+    padding: 0 14px;
+}
+.stadium-list__head {
+    flex: none;
+    height: 40px;
+    border-bottom: 4px solid var(--edge);
+    color: var(--dim);
+    font-size: 14px;
+}
+.stadium-list__head span:last-child { text-align: right; }
+.stadium-list {
+    flex: 1;
+    display: grid;
+    grid-auto-rows: minmax(30px, 1fr);      /* the rows share the height of the board */
+    min-height: 0;
+    overflow-y: auto;
+}
+.stadium-row {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    border-bottom: 2px dotted var(--edge);
+    background: none;
+    color: var(--text);
+    font: 400 clamp(15px, 1.35vw, 20px)/1 var(--font-led);
+    text-align: left;
+    text-transform: uppercase;
+}
+.stadium-row:last-child { border-bottom: 0; }
+.stadium-row__num { color: var(--dim); font-size: 13px; }
+.stadium-row__name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.stadium-row__cap { grid-column: 4; color: var(--amber); font-size: .82em; text-align: right; }
+.stadium-row__tag {
+    grid-column: 3;
+    display: none;
+    padding: 4px 6px;
+    border: 2px solid currentColor;
+    font: 400 11px/1 var(--font-led);
+    text-transform: uppercase;
+}
+.stadium-row.is-chosen .stadium-row__tag { display: inline-block; }
+.stadium-row:hover { color: var(--amber); }
+.stadium-row.is-active { background: var(--amber); color: var(--pit); }
+.stadium-row.is-active .stadium-row__num,
+.stadium-row.is-active .stadium-row__cap { color: var(--pit); }
+.stadium-row:focus-visible { outline-offset: -4px; }
+.stadium__foot { flex: none; padding: 14px; border-top: 4px solid var(--edge); }
+.menu .stadium__foot .btn { width: 100%; min-height: 58px; font-size: 20px; border-color: var(--amber); }
+.menu .stadium__foot .btn:hover { background: #fff; border-color: #fff; color: var(--pit); }
+
+/* ---------- menus on smaller screens ---------- */
+@media (max-width: 900px) {
+    .launch__row { grid-template-columns: minmax(0, 1fr); }
+    .halves { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+    .halves__mid { padding-top: 0; }
+    .swap { display: flex; align-items: center; gap: 10px; }
+    .toss { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+    .toss__circle { grid-column: 1 / -1; grid-row: 1; justify-self: center; }
+    .pick-btn { justify-self: stretch; justify-content: center; min-width: 0; }
+    .stadium { grid-template-columns: minmax(0, 1fr); }
+    .stadium-list { max-height: 300px; grid-auto-rows: 44px; }
+}
+
+@media (max-height: 760px) {
+    .menu .title { font-size: clamp(34px, 4.4vw, 56px); }
+    .team-card__head { margin-bottom: 10px; }
+    .field { margin-bottom: 10px; }
+    .field__input { height: 56px; font-size: 24px; }
+    .keys > div { padding: 5px 0; }
+    .toss { margin: 10px 0 6px; }
+    .toss__circle { width: clamp(190px, 21vw, 240px); }
+    .coin-result { min-height: 70px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

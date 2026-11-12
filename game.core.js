@@ -7,7 +7,7 @@
 // the live site is actually serving the latest game.js. If this string
 // doesn't show up in DevTools console after a refresh, the browser /
 // GitHub Pages CDN is still serving an older cached copy.
-const GAME_BUILD = 'v72-anfield (2026-11-11)';
+const GAME_BUILD = 'v76-scoreboard-menus (2026-11-13)';
 console.log(`%c[GAME] build: ${GAME_BUILD}`,
     'background:#16a34a;color:#000;font-weight:bold;padding:3px 8px;border-radius:3px');
 
