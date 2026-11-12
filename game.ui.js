@@ -4,74 +4,14 @@
 // =====================================================
 
 // ----------- LAUNCH -----------
-// The launch screen uses img/new.png as a cover-fit background. The poster has
-// two buttons painted on it ("Betreed het stadion" and "Bekijk stadion"). We
-// translate clicks back into the poster's own coordinate space so each painted
-// button stays clickable at any viewport size / aspect ratio.
-const POSTER_ASPECT = 1920 / 1080;
-// Normalized region (0–1) within the poster image for "Bekijk stadion":
-const POSTER_BTN_STADIUM_PICK = { x0: 0.04, x1: 0.26, y0: 0.78, y1: 0.86 };
-// Set to true to see the hit zone outlined on screen
-const POSTER_HITBOX_DEBUG = true;
-
-function posterImageRect(screenEl) {
-    const rect = screenEl.getBoundingClientRect();
-    const viewportAspect = rect.width / rect.height;
-    let imgW, imgH, offX, offY;
-    if (viewportAspect > POSTER_ASPECT) {
-        imgW = rect.width;
-        imgH = rect.width / POSTER_ASPECT;
-        offX = 0;
-        offY = (rect.height - imgH) / 2;
-    } else {
-        imgH = rect.height;
-        imgW = rect.height * POSTER_ASPECT;
-        offX = (rect.width - imgW) / 2;
-        offY = 0;
-    }
-    return { imgW, imgH, offX, offY, rect };
-}
-
-function paintPosterHitboxes(screenEl) {
-    if (!POSTER_HITBOX_DEBUG) return;
-    let box = screenEl.querySelector('.poster-hitbox-debug');
-    if (!box) {
-        box = document.createElement('div');
-        box.className = 'poster-hitbox-debug';
-        Object.assign(box.style, {
-            position: 'absolute',
-            pointerEvents: 'none',
-            border: '2px solid #22d3ee',
-            background: 'rgba(34, 211, 238, 0.18)',
-            zIndex: '4',
-            boxShadow: '0 0 18px rgba(34, 211, 238, 0.55)'
-        });
-        screenEl.appendChild(box);
-    }
-    const { imgW, imgH, offX, offY } = posterImageRect(screenEl);
-    const b = POSTER_BTN_STADIUM_PICK;
-    box.style.left   = (offX + b.x0 * imgW) + 'px';
-    box.style.top    = (offY + b.y0 * imgH) + 'px';
-    box.style.width  = ((b.x1 - b.x0) * imgW) + 'px';
-    box.style.height = ((b.y1 - b.y0) * imgH) + 'px';
-}
-
 function bindLaunch() {
-    const screen = $('launch-screen');
-    screen.addEventListener('click', (e) => {
-        if (STATE.screen !== 'launch') return;
-        const { imgW, imgH, offX, offY, rect } = posterImageRect(e.currentTarget);
-        const nx = (e.clientX - rect.left - offX) / imgW;
-        const ny = (e.clientY - rect.top - offY) / imgH;
-        const b = POSTER_BTN_STADIUM_PICK;
-        if (nx >= b.x0 && nx <= b.x1 && ny >= b.y0 && ny <= b.y1) {
-            openStadiumPicker();
-        } else {
-            goToSetup();
-        }
+    $('launch-cta').addEventListener('click', goToSetup);
+    $('launch-stadium-pick').addEventListener('click', openStadiumPicker);
+
+    // "Terug" in the top bar of the setup and toss screens
+    document.querySelectorAll('[data-back]').forEach(btn => {
+        btn.addEventListener('click', () => history.back());
     });
-    paintPosterHitboxes(screen);
-    window.addEventListener('resize', () => paintPosterHitboxes(screen));
 }
 function updateLaunchStadiumLabel() {
     const lbl = $('launch-stadium-name');
@@ -88,44 +28,16 @@ function bindSetup() {
     const p2Input = $('p2-name');
     const submit = $('to-coin');
 
-    const refreshSubmit = () => {
-        submit.disabled = false;
-    };
-    // toggle a `has-value` class on the wrapper for browsers without :has()
-    const reflectValue = (inp) => {
-        const wrap = inp.closest('.field__wrap');
-        if (wrap) wrap.classList.toggle('has-value', inp.value.length > 0);
-    };
-    [p1Input, p2Input].forEach(inp => {
-        inp.addEventListener('input', () => { reflectValue(inp); refreshSubmit(); });
-        reflectValue(inp);
-    });
-
     // mode toggle ---------------------------------------
     document.querySelectorAll('.mode-tab').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.currentTarget.blur();
-            const mode = btn.dataset.mode;
-            STATE.mode = mode;
+        btn.addEventListener('click', () => {
+            STATE.mode = btn.dataset.mode;
             document.querySelectorAll('.mode-tab').forEach(b => {
-                const on = b.dataset.mode === mode;
+                const on = b === btn;
                 b.classList.toggle('active', on);
                 b.setAttribute('aria-selected', on ? 'true' : 'false');
             });
             applyMode();
-            refreshSubmit();
-        });
-    });
-
-    // delete / clear buttons ----------------------------
-    document.querySelectorAll('.field__clear').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.currentTarget.blur();
-            const target = $(btn.dataset.target);
-            if (!target) return;
-            target.value = '';
-            target.dispatchEvent(new Event('input', { bubbles: true }));
-            target.focus();
         });
     });
 
@@ -136,75 +48,59 @@ function bindSetup() {
         renderRosterColors();
     });
 
+    // Enter in a name field continues to the toss
+    [p1Input, p2Input].forEach(inp => {
+        inp.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') submit.click();
+        });
+    });
+
     submit.addEventListener('click', () => {
-        STATE.p1.name = (p1Input.value.trim() || 'SPELER 1').toUpperCase().slice(0, 14);
+        STATE.p1.name = (p1Input.value.trim() || 'Speler 1').slice(0, 14);
         if (STATE.mode === 'cpu') {
-            STATE.p2.name = 'CPU.NOCTURNE';
+            STATE.p2.name = 'Computer';
         } else {
-            STATE.p2.name = (p2Input.value.trim() || 'SPELER 2').toUpperCase().slice(0, 14);
+            STATE.p2.name = (p2Input.value.trim() || 'Speler 2').slice(0, 14);
         }
         // CPU never wins the toss randomly — keep it human-friendly: human always calls
         STATE.callerSide = STATE.mode === 'cpu' ? 'p1' : (Math.random() < 0.5 ? 'p1' : 'p2');
         goToCoin();
     });
+
+    renderRosterColors();
+    applyMode();
 }
 
 function applyMode() {
-    const cpuCard = document.querySelector('.roster-card[data-slot="p2"]');
-    const cpuPanel = cpuCard?.querySelector('.roster-card__cpu');
-    const p2Field = cpuCard?.querySelector('.field');
+    const cpu = STATE.mode === 'cpu';
+    const human = $('p2-human');
+    const bot = $('p2-cpu');
     const p2Input = $('p2-name');
-    if (!cpuCard) return;
-
-    if (STATE.mode === 'cpu') {
-        cpuCard.classList.add('is-cpu');
-        if (cpuPanel) cpuPanel.hidden = false;
-        if (p2Field) p2Field.hidden = true;
-        if (p2Input) {
-            p2Input.disabled = true;
-            p2Input.value = '';
-        }
-        // also update the "Controls" meta line to read CPU
-        const metaCtrl = cpuCard.querySelectorAll('.roster-card__meta .v')[1];
-        if (metaCtrl) metaCtrl.textContent = 'AUTONOMOUS';
-    } else {
-        cpuCard.classList.remove('is-cpu');
-        if (cpuPanel) cpuPanel.hidden = true;
-        if (p2Field) p2Field.hidden = false;
-        if (p2Input) p2Input.disabled = false;
-        const metaCtrl = cpuCard.querySelectorAll('.roster-card__meta .v')[1];
-        if (metaCtrl) metaCtrl.textContent = 'PIJLEN · ENTER';
-    }
+    const p1Alt = $('p1-keys-alt');
+    if (human) human.hidden = cpu;
+    if (bot) bot.hidden = !cpu;
+    if (p2Input) p2Input.disabled = cpu;
+    if (p1Alt) p1Alt.hidden = !cpu;
 }
 
 function renderRosterColors() {
-    // re-skin the two cards to reflect current team assignments
-    const cardP1 = document.querySelector('#setup-screen .roster-card:nth-of-type(1)');
-    const cardP2 = document.querySelector('#setup-screen .roster-card:nth-of-type(3)');
-    // p1 is always the LEFT card; just toggle red/blue class
-    cardP1.classList.toggle('roster-card--red', STATE.p1.team === 1);
-    cardP1.classList.toggle('roster-card--blue', STATE.p1.team === 2);
-    cardP2.classList.toggle('roster-card--red', STATE.p2.team === 1);
-    cardP2.classList.toggle('roster-card--blue', STATE.p2.team === 2);
-
-    // update labels too
-    const labelP1 = cardP1.querySelector('.roster-card__meta .v');
-    const labelP2 = cardP2.querySelector('.roster-card__meta .v');
-    if (labelP1) labelP1.textContent = STATE.p1.team === 1 ? 'Rood' : 'Blauw';
-    if (labelP2) labelP2.textContent = STATE.p2.team === 1 ? 'Rood' : 'Blauw';
-
-    const crestP1 = cardP1.querySelector('.roster-card__crest span');
-    const crestP2 = cardP2.querySelector('.roster-card__crest span');
-    if (crestP1) crestP1.textContent = STATE.p1.team === 1 ? 'R' : 'B';
-    if (crestP2) crestP2.textContent = STATE.p2.team === 1 ? 'R' : 'B';
-
-    const tagP1 = cardP1.querySelector('.roster-card__tag');
-    const tagP2 = cardP2.querySelector('.roster-card__tag');
-    if (tagP1) tagP1.textContent = STATE.p1.team === 1 ? 'THUIS' : 'UIT';
-    if (tagP2) tagP2.textContent = STATE.p2.team === 1 ? 'THUIS' : 'UIT';
+    // P1 is always the left card, P2 the right one; only the colours swap
+    [['card-p1', STATE.p1], ['card-p2', STATE.p2]].forEach(([id, player]) => {
+        const card = $(id);
+        if (!card) return;
+        const red = player.team === 1;
+        card.dataset.team = red ? 'red' : 'blue';
+        const side = card.querySelector('.team-card__side');
+        const color = card.querySelector('.team-card__color');
+        if (side) side.textContent = red ? 'Thuis' : 'Uit';
+        if (color) color.textContent = red ? 'Rood' : 'Blauw';
+    });
 }
 
 // ----------- COIN -----------
+// must match the coin-toss animation duration in styles.css
+const COIN_FLIP_MS = 2400;
+
 function bindCoin() {
     $('pick-heads').addEventListener('click', () => callCoin('heads'));
     $('pick-tails').addEventListener('click', () => callCoin('tails'));
@@ -261,13 +157,13 @@ function callCoin(choice) {
         const callerName = STATE.callerSide === 'p1' ? STATE.p1.name : STATE.p2.name;
         const otherName  = STATE.callerSide === 'p1' ? STATE.p2.name : STATE.p1.name;
         const winnerName = won ? callerName : otherName;
-        const choiceLabel = choice === 'heads' ? 'KOP' : 'MUNT';
-        const resultLabel = result === 'heads' ? 'KOP' : 'MUNT';
+        const choiceLabel = choice === 'heads' ? 'kop' : 'munt';
+        const resultLabel = result === 'heads' ? 'kop' : 'munt';
 
         resultEl.querySelector('.coin-result__line').textContent =
-            `JIJ KOOS ${choiceLabel} · UITKOMST ${resultLabel}`;
+            `Gekozen: ${choiceLabel}. Het is ${resultLabel}.`;
         resultEl.querySelector('.coin-result__text').textContent =
-            `${winnerName} krijgt de aftrap`;
+            `${winnerName} trapt af`;
         resultEl.classList.add('show');
 
         if (won) {
@@ -277,7 +173,7 @@ function callCoin(choice) {
         }
 
         $('kickoff-btn').hidden = false;
-    }, 3000);
+    }, COIN_FLIP_MS);
 }
 
 // ----------- GAME OVER -----------
@@ -363,70 +259,74 @@ function bindPause() {
     });
 }
 
+// ----------- HUD -----------
+// Fills one key-legend panel: player name, then [keys] + label groups.
+function fillHudKeys(el, player, groups, note) {
+    if (!el) return;
+    el.replaceChildren();
+    el.dataset.team = player.team === 1 ? 'red' : 'blue';
+
+    const who = document.createElement('span');
+    who.className = 'hud-keys__who';
+    who.textContent = player.name;
+    el.appendChild(who);
+
+    groups.forEach(([keyCaps, label]) => {
+        const group = document.createElement('span');
+        group.className = 'hud-keys__group';
+        keyCaps.forEach(cap => {
+            const kbd = document.createElement('kbd');
+            kbd.textContent = cap;
+            group.appendChild(kbd);
+        });
+        const lbl = document.createElement('span');
+        lbl.className = 'hud-keys__label';
+        lbl.textContent = label;
+        group.appendChild(lbl);
+        el.appendChild(group);
+    });
+
+    if (note) {
+        const n = document.createElement('span');
+        n.className = 'hud-keys__label';
+        n.textContent = note;
+        el.appendChild(n);
+    }
+}
+
 function paintHud() {
-    // HUD halves are visually fixed: red on the left, blue on the right.
+    // Scoreboard halves are fixed: red on the left, blue on the right.
     const redPlayer  = STATE.p1.team === 1 ? STATE.p1 : STATE.p2;
     const bluePlayer = STATE.p1.team === 2 ? STATE.p1 : STATE.p2;
     $('hud-p1-name').textContent = redPlayer.name;
     $('hud-p2-name').textContent = bluePlayer.name;
 
-    const p1Col = document.querySelector('.hud-controls__col--red');
-    const p2Col = document.querySelector('.hud-controls__col--blue');
-
-    // Controls hint
-    if (STATE.mode === 'cpu') {
-        // human always uses WASD/Pijlen + SPATIE; CPU has no controls
-        if (p2Col) {
-            p2Col.innerHTML = `
-                <span class="hud-controls__who" id="hud-controls-p2">CPU.NOCTURNE · ${STATE.p2.team === 1 ? 'ROOD' : 'BLAUW'}</span>
-                <span class="hud-controls__cpu-dot"></span>
-                <span class="hud-controls__plus">AUTONOMOUS</span>
-            `;
-        }
-        // also: in CPU mode, P1 may use either WASD or arrows -> reflect
-        if (p1Col) {
-            p1Col.innerHTML = `
-                <span class="hud-controls__who" id="hud-controls-p1">${STATE.p1.name} · ${STATE.p1.team === 1 ? 'ROOD' : 'BLAUW'}</span>
-                <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>
-                <span class="hud-controls__or">/</span>
-                <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd>
-                <span class="hud-controls__plus">+</span>
-                <kbd>SPATIE</kbd>
-                <span class="hud-controls__hint">houd = harder · <kbd>Q</kbd>/<kbd>⇧</kbd> = pass / vraag</span>
-            `;
-        }
-    } else {
-        if (p1Col) {
-            p1Col.innerHTML = `
-                <span class="hud-controls__who" id="hud-controls-p1">${STATE.p1.name} · ${STATE.p1.team === 1 ? 'ROOD' : 'BLAUW'}</span>
-                <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>
-                <span class="hud-controls__plus">+</span>
-                <kbd>SPATIE</kbd>
-                <span class="hud-controls__hint">houd = harder · <kbd>Q</kbd> = pass / vraag</span>
-            `;
-        }
-        if (p2Col) {
-            p2Col.innerHTML = `
-                <span class="hud-controls__who" id="hud-controls-p2">${STATE.p2.name} · ${STATE.p2.team === 1 ? 'ROOD' : 'BLAUW'}</span>
-                <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd>
-                <span class="hud-controls__plus">+</span>
-                <kbd>ENTER</kbd>
-                <span class="hud-controls__hint">houd = harder · <kbd>⇧</kbd> = pass / vraag</span>
-            `;
-        }
-    }
+    // Key legends follow the keyboard instead: P1 (WASD) left, P2 (arrows) right.
+    const cpu = STATE.mode === 'cpu';
+    fillHudKeys($('hud-keys-p1'), STATE.p1, [
+        [['W', 'A', 'S', 'D'], cpu ? 'of pijltjes' : 'bewegen'],
+        [['Spatie'], 'schieten'],
+        [['Q'], 'terugspelen'],
+    ]);
+    fillHudKeys($('hud-keys-p2'), STATE.p2, cpu ? [] : [
+        [['↑', '←', '↓', '→'], 'bewegen'],
+        [['Enter'], 'schieten'],
+        [['Shift'], 'terugspelen'],
+    ], cpu ? 'speelt vanzelf' : '');
 }
+
 // ----------- kickoff countdown -----------
 function runKickoffCountdown(done) {
     const overlay = $('kickoff-overlay');
     const num = $('kickoff-num');
-    const seq = ['3','2','1','GO!'];
+    const seq = ['3','2','1','Hup!'];
     let i = 0;
     overlay.hidden = false;
     num.textContent = seq[0];
     // re-trigger animation each step
     const tick = () => {
         num.textContent = seq[i];
+        num.classList.toggle('is-word', !/^\d+$/.test(seq[i]));
         num.style.animation = 'none';
         // force reflow
         void num.offsetWidth;

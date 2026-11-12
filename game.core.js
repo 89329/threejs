@@ -1,5 +1,5 @@
 // =====================================================
-// PITCH ROYALE — Stadium Nightfall
+// PITCH ROYALE
 // Core state/config/navigation bootstrap
 // =====================================================
 
@@ -7,7 +7,7 @@
 // the live site is actually serving the latest game.js. If this string
 // doesn't show up in DevTools console after a refresh, the browser /
 // GitHub Pages CDN is still serving an older cached copy.
-const GAME_BUILD = 'v68-camera-pivot-20deg (2026-06-01)';
+const GAME_BUILD = 'v72-anfield (2026-11-11)';
 console.log(`%c[GAME] build: ${GAME_BUILD}`,
     'background:#16a34a;color:#000;font-weight:bold;padding:3px 8px;border-radius:3px');
 
@@ -55,252 +55,99 @@ const PLAYER_SIZE = 3.4;
 const BALL_SIZE = 1.05;
 
 // ----------- stadium catalog -----------
+// `pitch` says where the lines of the model's pitch are; see fitStadiumToPitch().
 const STADIUMS = [
     {
         id: 'camp-nou',
         name: 'Camp Nou',
-        sub: 'HOME · BLAUGRANA',
-        tagline: 'Més que un club.',
+        club: 'FC Barcelona',
+        city: 'Barcelona',
         file: 'media/models/stadiums/camp_nou_stadium.glb',
-        accent: '#a50044',
         capacity: '99.354',
-        mood: 'AVOND',
-        silhouette: 'bowl',
-        scaleMul: 0.78,
-        colorScale: 0.55,
-        offsetY: 0,
-        nativePitch: true,
-        pitchBrighten: 1.9,
-        pitchColor: '#1d8a45',
-        pitchEmissive: '#0a3a1d',
-        cutawayFrontZ: null,
-        gameplayScale: 1.0,
-        cameraPos: [27, 72, 73],
-        cameraLookAt: [0, 0, 0],
-        cameraFov: 58,
-        cameraCutaway: false,
+        pitch: { x: -6.7, z: 0.24, w: 113.75, l: 78, angle: 1.202, y: 0.11 },
     },
     {
         id: 'old-trafford',
         name: 'Old Trafford',
-        sub: 'HOME · RED DEVILS',
-        tagline: 'The Theatre of Dreams.',
+        club: 'Manchester United',
+        city: 'Manchester',
         file: 'media/models/stadiums/old_trafford.glb',
-        accent: '#da291c',
         capacity: '74.310',
-        mood: 'AVOND',
-        silhouette: 'classic',
-        scaleMul: 0.78,
-        colorScale: 0.55,
-        offsetY: 0,
-        nativePitch: true,
-        pitchBrighten: 1.9,
-        cutawayFrontZ: null,
-        gameplayScale: 1.0,
-        cameraPos: [12, 72, 73],
-        cameraLookAt: [-15, 0, 0],
-        cameraFov: 58,
-        cameraCutaway: false,
+        pitch: { x: -6.9, z: 13.98, w: 74.45, l: 47.84, angle: 0, y: 8.42 },
     },
     {
         id: 'etihad',
         name: 'Etihad Stadium',
-        sub: 'HOME · CITIZENS',
-        tagline: 'Welcome to the new home of City.',
+        club: 'Manchester City',
+        city: 'Manchester',
         file: 'media/models/stadiums/ETIHAD STADIUM.glb',
-        accent: '#6cabdd',
         capacity: '53.400',
-        mood: 'AVOND',
-        silhouette: 'bowl',
-        scaleMul: 0.78,
-        colorScale: 0.55,
-        offsetY: 0,
-        nativePitch: true,
-        pitchBrighten: 1.9,
-        cutawayFrontZ: FIELD_L / 2 + 2,
-        gameplayScale: 1.0,
-        visualPlayerScale: 0.55,
-        rotateY: 0,
-        cameraPos: [23, 44, 64],
-        cameraLookAt: [0, 3, 0],
-        cameraFov: 32,
-        cameraCutaway: false,
+        pitch: { x: -0.66, z: 0.69, w: 85.5, l: 55.46, angle: 1.397, y: 17.03 },
     },
     {
         id: 'anfield',
-        skipFallback: true,
         name: 'Anfield',
-        sub: 'HOME · THE REDS',
-        tagline: "You'll Never Walk Alone.",
+        club: 'Liverpool FC',
+        city: 'Liverpool',
         file: 'media/models/stadiums/anfield_stadium.glb',
-        accent: '#c8102e',
         capacity: '61.276',
-        mood: 'AVOND',
-        silhouette: 'classic',
-        scaleMul: 0.78,
-        colorScale: 0.55,
-        offsetY: 0,
-        nativePitch: false,
-        fieldCutout: true,
-        pitchBrighten: 1.9,
-        cutawayFrontZ: null,
-        gameplayScale: 1.0,
-        cameraPos: [19, 22, 52],
-        cameraLookAt: [0, 1, 0],
-        cameraFov: 46,
-        cameraCutaway: true,
+        // scan of the whole neighbourhood; the stadium is a small part of it
+        pitch: { x: 14.53, z: 21.07, w: 65.3, l: 43.9, angle: -0.78, y: 18.39 },
     },
     {
         id: 'emirates',
-        skipFallback: true,
         name: 'Emirates Stadium',
-        sub: 'HOME · GUNNERS',
-        tagline: 'Victoria Concordia Crescit.',
+        club: 'Arsenal',
+        city: 'Londen',
         file: 'media/models/stadiums/emirates-stadium (1)/source/untitled.glb',
-        accent: '#ef0107',
         capacity: '60.704',
-        mood: 'AVOND',
-        silhouette: 'bowl',
-        scaleMul: 0.78,
-        colorScale: 0.55,
-        offsetY: 0,
-        nativePitch: false,
-        fieldCutout: true,
-        pitchBrighten: 1.9,
-        cutawayFrontZ: null,
-        gameplayScale: 1.0,
-        cameraPos: [19, 22, 52],
-        cameraLookAt: [0, 1, 0],
-        cameraFov: 46,
-        cameraCutaway: true,
+        pitch: { x: 1.17, z: 0.74, w: 107.4, l: 69.8, angle: -1.542, y: 9.08 },
     },
     {
         id: 'wanda-metropolitano',
-        skipFallback: true,
         name: 'Wanda Metropolitano',
-        sub: 'HOME · ATLÉTICO',
-        tagline: 'Nunca dejes de creer.',
+        club: 'Atlético Madrid',
+        city: 'Madrid',
         file: 'media/models/stadiums/wanda_metropolitano_stadium.glb',
-        accent: '#cb3524',
         capacity: '70.460',
-        mood: 'AVOND',
-        silhouette: 'bowl',
-        scaleMul: 0.78,
-        colorScale: 0.55,
-        offsetY: 0,
-        nativePitch: false,
-        fieldCutout: true,
-        pitchBrighten: 1.9,
-        cutawayFrontZ: null,
-        gameplayScale: 1.0,
-        cameraPos: [19, 22, 52],
-        cameraLookAt: [0, 1, 0],
-        cameraFov: 46,
-        cameraCutaway: true,
+        pitch: { x: -4.1, z: -5.5, w: 37, l: 24, angle: 0.305, y: 4.83, own: true },
     },
     {
         id: 'la-bombonera',
-        skipFallback: true,
         name: 'La Bombonera',
-        sub: 'HOME · BOCA JUNIORS',
-        tagline: 'La mitad más uno.',
+        club: 'Boca Juniors',
+        city: 'Buenos Aires',
         file: 'media/models/stadiums/la_bombonera_boca_juniors.glb',
-        accent: '#0a4ea0',
         capacity: '54.000',
-        mood: 'AVOND',
-        silhouette: 'classic',
-        scaleMul: 0.78,
-        colorScale: 1.0,
-        offsetY: 0,
-        // pitchY lifts all procedural gameplay elements (players, ball, goals,
-        // shadows) by this many world units to match where the GLB's grass
-        // surface actually sits — tweak per stadium when bodies sink into the
-        // imported pitch mesh.
-        pitchY: 2.0,
-        visualPlayerScale: 1.2,
-        nativePitch: true,
-        fieldCutout: false,
-        pitchBrighten: 1.9,
-        cutawayFrontZ: null,
-        gameplayScale: 1.0,
-        rotateY: 0,
-        outerGroundColor: 0x5fa84f,
-        cameraPos: [21, 28, 56],
-        cameraLookAt: [0, 2, 0],
-        cameraFov: 48,
-        cameraCutaway: false,
+        pitch: { x: 29.63, z: -3.8, w: 110.9, l: 67.45, angle: 1.571, y: 9.14 },
     },
     {
         id: 'otkritie-arena',
-        skipFallback: true,
         name: 'Otkritie Arena',
-        sub: 'HOME · SPARTAK',
-        tagline: 'Гладиатор на поле.',
+        club: 'Spartak Moskou',
+        city: 'Moskou',
         file: 'media/models/stadiums/otkritie_arena.glb',
-        accent: '#ee1d23',
         capacity: '45.360',
-        mood: 'AVOND',
-        silhouette: 'bowl',
-        scaleMul: 0.78,
-        colorScale: 0.55,
-        offsetY: 0,
-        nativePitch: false,
-        fieldCutout: true,
-        pitchBrighten: 1.9,
-        cutawayFrontZ: null,
-        gameplayScale: 1.0,
-        cameraPos: [19, 22, 52],
-        cameraLookAt: [0, 1, 0],
-        cameraFov: 46,
-        cameraCutaway: true,
+        // night-time scan: its grass is near black and full of holes
+        pitch: { x: 5.2, z: -3.3, w: 54.7, l: 36.4, angle: 1.571, y: 9.76, own: true },
     },
     {
         id: 'home-park',
-        skipFallback: true,
         name: 'Home Park',
-        sub: 'HOME · PLYMOUTH ARGYLE',
-        tagline: 'The Theatre of Greens.',
+        club: 'Plymouth Argyle',
+        city: 'Plymouth',
         file: 'media/models/stadiums/plymouth_argyle_-_home_park.glb',
-        accent: '#00563f',
         capacity: '17.900',
-        mood: 'AVOND',
-        silhouette: 'classic',
-        scaleMul: 0.78,
-        colorScale: 0.55,
-        offsetY: 0,
-        nativePitch: false,
-        fieldCutout: true,
-        pitchBrighten: 1.9,
-        cutawayFrontZ: null,
-        gameplayScale: 1.0,
-        cameraPos: [19, 22, 52],
-        cameraLookAt: [0, 1, 0],
-        cameraFov: 46,
-        cameraCutaway: true,
+        pitch: { x: -9.33, z: -5.63, w: 82.8, l: 52.95, angle: 1.587, y: 10.99 },
     },
     {
         id: 'cheltenham',
-        skipFallback: true,
         name: 'Cheltenham Pitch',
-        sub: 'TRAINING GROUND',
-        tagline: 'Grassroots glory.',
+        club: 'Cheltenham Town',
+        city: 'Cheltenham',
         file: 'media/models/stadiums/cheltenham_football_pitch.glb',
-        accent: '#d4af37',
         capacity: '7.066',
-        mood: 'AVOND',
-        silhouette: 'classic',
-        scaleMul: 0.78,
-        colorScale: 0.55,
-        offsetY: 0,
-        nativePitch: false,
-        fieldCutout: true,
-        pitchBrighten: 1.9,
-        cutawayFrontZ: null,
-        gameplayScale: 1.0,
-        cameraPos: [19, 22, 52],
-        cameraLookAt: [0, 1, 0],
-        cameraFov: 46,
-        cameraCutaway: true,
+        pitch: { x: -8.59, z: 4.97, w: 128.2, l: 81.6, angle: 0.912, y: 4.63 },
     },
 ];
 
@@ -333,7 +180,7 @@ function showScreen(id) {
 
 function gotoScreen(target, { replace = false } = {}) {
     if (STATE.screen === 'playing' && target !== 'playing') teardownGame();
-    if (STATE.screen === 'stadium' && target !== 'stadium') { STADIUM_PREVIEW?.detach(); stopTimecode(); }
+    if (STATE.screen === 'stadium' && target !== 'stadium') { STADIUM_PREVIEW?.detach(); }
     STATE.screen = target;
     showScreen(SCREEN_TO_DOM[target] || (target + '-screen'));
     const stateObj = { screen: target };
@@ -344,7 +191,7 @@ function gotoScreen(target, { replace = false } = {}) {
 
 function navigateToFromPopState(target) {
     if (STATE.screen === 'playing' && target !== 'playing') teardownGame();
-    if (STATE.screen === 'stadium' && target !== 'stadium') { STADIUM_PREVIEW?.detach(); stopTimecode(); }
+    if (STATE.screen === 'stadium' && target !== 'stadium') { STADIUM_PREVIEW?.detach(); }
     STATE.screen = target;
     showScreen(SCREEN_TO_DOM[target] || (target + '-screen'));
 }
@@ -375,14 +222,17 @@ document.addEventListener('DOMContentLoaded', () => {
     bindStadium();
     updateLaunchStadiumLabel();
     window.addEventListener('keydown', (e) => {
-        if (STATE.screen === 'launch' && (e.code === 'Space' || e.code === 'Enter')) {
-            goToSetup();
-        }
+        if (STATE.screen !== 'launch') return;
+        if (e.code !== 'Space' && e.code !== 'Enter') return;
+        // a focused menu button handles its own Enter / Space
+        if (e.target instanceof Element && e.target.closest('button')) return;
+        goToSetup();
     });
 
+    // short splash while the web fonts come in
     setTimeout(() => {
         if (STATE.screen === 'loading') gotoScreen('launch', { replace: true });
-    }, 2200);
+    }, 900);
 
     history.replaceState({ screen: 'loading' }, '', location.pathname + location.search);
 

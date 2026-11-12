@@ -7,9 +7,8 @@
 function initThree() {
     if (!scene) {
         scene = new THREE.Scene();
-        scene.fog = new THREE.Fog(COLORS.fogColor, 250, 500);
 
-        camera = new THREE.PerspectiveCamera(44, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera = new THREE.PerspectiveCamera(CAM.fov, window.innerWidth / window.innerHeight, 1, 2000);
 
         renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
         // cap pixel ratio harder — Retina at 2× quadruples GPU work for marginal gain
@@ -22,10 +21,8 @@ function initThree() {
         // shadowMap on/off flips them on/off). We compensate with a flat dark
         // round shadow blob mounted under each player in makePlayer().
         renderer.shadowMap.enabled = false;
-        // Per-material clipping planes (used by stadiums with cameraCutaway:true,
-        // e.g., Etihad — see buildStadium where we install a world-space plane
-        // in front of the camera-side stand to slice through wrap-around roof
-        // meshes that mesh-level visibility toggles can't hide).
+        // Per-material clipping planes: dressStadium() cuts the pitch column
+        // and the camera side out of every imported model.
         renderer.localClippingEnabled = true;
         renderer.outputEncoding = THREE.sRGBEncoding;
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -59,7 +56,8 @@ function initThree() {
     buildLights();
     buildField();
     buildGoals();
-    buildStadium();        // imports the .glb of the selected stadium
+    buildBoards();
+    buildStadium();        // imports the .glb of the selected stadium as scenery
     buildPlayers();
     buildBall();
     positionForKickoff();
@@ -78,348 +76,378 @@ function initThree() {
     animationId = requestAnimationFrame(animate);
 }
 
+// ----------- camera -----------
+// One broadcast camera for every stadium: on the long side, low enough to
+// keep the far stand in frame, tracking the ball sideways like a TV main camera.
+const CAM = { height: 30, back: 78, lookZ: 0, fov: 38, follow: 0.55, maxX: 24 };
+let camX = 0;
+
+function cameraTargetX() {
+    if (!ball) return 0;
+    return Math.max(-CAM.maxX, Math.min(CAM.maxX, ball.position.x * CAM.follow));
+}
+function placeCamera() {
+    camera.position.set(camX, CAM.height, CAM.back);
+    camera.lookAt(camX, 0, CAM.lookZ);
+}
 function applyGameplayCamera() {
-    const stadium = getSelectedStadium();
-    const pos = stadium.cameraPos || [0, 62, 88];
-    const look = stadium.cameraLookAt || [0, 4, 0];
-    camera.fov = stadium.cameraFov || 54;
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.position.set(pos[0], pos[1], pos[2]);
-    camera.lookAt(look[0], look[1], look[2]);
+    const aspect = window.innerWidth / window.innerHeight;
+    camera.aspect = aspect;
+    // widen the lens on narrow windows so both touchlines stay in frame
+    camera.fov = aspect >= 1.6 ? CAM.fov : Math.min(62, CAM.fov * 1.6 / aspect);
     camera.updateProjectionMatrix();
+    camX = cameraTargetX();
+    placeCamera();
+}
+function updateCamera(dt) {
+    camX += (cameraTargetX() - camX) * Math.min(1, dt * 3);
+    placeCamera();
+}
+
+// sRGB hex -> the linear colour the renderer expects (it re-encodes to sRGB
+// on output; without this every flat colour comes out washed and pastel)
+function srgb(hex) {
+    return new THREE.Color(hex).convertSRGBToLinear();
+}
+function litMat(hex) {
+    return new THREE.MeshLambertMaterial({ color: srgb(hex) });
 }
 
 function buildSky() {
-    const skyGeo = new THREE.SphereGeometry(420, 32, 16);
-    const skyMat = new THREE.ShaderMaterial({
-        side: THREE.BackSide,
-        uniforms: {
-            top:    { value: new THREE.Color(COLORS.skyTop) },
-            mid:    { value: new THREE.Color(COLORS.skyMid) },
-            bottom: { value: new THREE.Color(COLORS.skyBottom) },
-        },
-        vertexShader: `
-            varying vec3 vPos;
-            void main() { vPos = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
-        `,
-        fragmentShader: `
-            uniform vec3 top; uniform vec3 mid; uniform vec3 bottom;
-            varying vec3 vPos;
-            void main() {
-                float h = normalize(vPos).y;
-                vec3 col;
-                if (h > 0.0) col = mix(mid, top, smoothstep(0.0, 0.7, h));
-                else         col = mix(mid, bottom, smoothstep(0.0, 0.6, -h));
-                // subtle starfield from a hashed noise — only in the upper half
-                float s = fract(sin(dot(vPos.xyz, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
-                float star = step(0.9985, s) * smoothstep(0.0, 0.4, h);
-                col += vec3(star) * 0.8;
-                gl_FragColor = vec4(col, 1.0);
-            }
-        `,
-    });
+    const skyGeo = new THREE.SphereGeometry(900, 24, 12);
+    const skyMat = new THREE.MeshBasicMaterial({ color: srgb(0x0b1220), side: THREE.BackSide, fog: false });
     scene.add(new THREE.Mesh(skyGeo, skyMat));
 }
 
 function buildLights() {
-    scene.add(new THREE.AmbientLight(0x3a3a3a, 0.45));
-
-    // hemisphere wash — neutral above, deep ground below (no blue night-tint)
-    const hemi = new THREE.HemisphereLight(0x5a5a5a, 0x0a0a0a, 0.55);
-    scene.add(hemi);
-
-    // primary directional fill (replaces the harsher key) — warm white, no blue
-    const fill = new THREE.DirectionalLight(0xeae0c8, 0.35);
-    fill.position.set(0, 120, 30);
-    scene.add(fill);
-
-    // four cinematic stadium spotlights at the corners
-    const corners = [
-        [ FIELD_W * 0.7,  90,  FIELD_L * 0.85],
-        [-FIELD_W * 0.7,  90,  FIELD_L * 0.85],
-        [ FIELD_W * 0.7,  90, -FIELD_L * 0.85],
-        [-FIELD_W * 0.7,  90, -FIELD_L * 0.85],
-    ];
-    corners.forEach(([x, y, z], i) => {
-        const spot = new THREE.SpotLight(0xfff7e0, 1.3, 260, Math.PI / 4.6, 0.45, 1.4);
-        spot.position.set(x, y, z);
-        spot.target.position.set(x * 0.15, 0, z * 0.15);
-        // shadows on just one for perf
-        if (i === 0) {
-            spot.castShadow = true;
-            spot.shadow.mapSize.width = 1024;
-            spot.shadow.mapSize.height = 1024;
-            spot.shadow.bias = -0.0003;
-            spot.shadow.camera.near = 30;
-            spot.shadow.camera.far = 280;
-        }
-        scene.add(spot);
-        scene.add(spot.target);
-    });
-
-    // team-coloured rim lights behind each goal
-    const redGlow = new THREE.PointLight(COLORS.team1Hot, 1.6, 80, 2.0);
-    redGlow.position.set(-FIELD_W/2 - 4, 6, 0);
-    scene.add(redGlow);
-
-    const blueGlow = new THREE.PointLight(COLORS.team2Hot, 1.6, 80, 2.0);
-    blueGlow.position.set(FIELD_W/2 + 4, 6, 0);
-    scene.add(blueGlow);
+    // even floodlight wash: bright from above, soft green bounce from the grass
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x4c7a4c, 0.52));
+    scene.add(new THREE.AmbientLight(0xffffff, 0.12));
+    const key = new THREE.DirectionalLight(0xfff6e6, 0.42);
+    key.position.set(-40, 120, 60);
+    scene.add(key);
 }
 
-function makeStripeTexture() {
-    // higher-resolution canvas for crisper stripes + faint vertical wear marks
+// ----------- pitch -----------
+// A drawn pitch at the gameplay dimensions. It is the stand-in for stadiums
+// without a usable pitch of their own; otherwise the match is played on the
+// model's grass and this one is hidden (see buildStadium).
+const PITCH_MARGIN = 10;          // grass apron outside the lines
+const PEN_DEPTH = 18, PEN_WIDTH = 46;
+const BOX_DEPTH = 7,  BOX_WIDTH = 30;
+const PEN_SPOT = 13,  CIRCLE_R = 10;
+
+function makePitchTexture() {
+    const PX = 16;                                  // pixels per world unit
+    const w = (FIELD_W + PITCH_MARGIN * 2) * PX;
+    const h = (FIELD_L + PITCH_MARGIN * 2) * PX;
     const c = document.createElement('canvas');
-    c.width = 64; c.height = 256;
+    c.width = w; c.height = h;
     const ctx = c.getContext('2d');
-    const lit  = '#' + COLORS.pitch.toString(16).padStart(6, '0');
-    const dark = '#' + COLORS.pitchDark.toString(16).padStart(6, '0');
-    for (let i = 0; i < 8; i++) {
-        ctx.fillStyle = i % 2 === 0 ? lit : dark;
-        ctx.fillRect(0, i * 32, 64, 32);
+
+    // mowing stripes across the length of the pitch, apron included
+    const bands = 14;
+    const bandW = FIELD_W / bands * PX;
+    ctx.fillStyle = '#4c9440';
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#43853a';
+    for (let i = -2; i < bands + 2; i += 2) {
+        ctx.fillRect(PITCH_MARGIN * PX + i * bandW, 0, bandW, h);
     }
-    // subtle noise overlay
-    const img = ctx.getImageData(0, 0, 64, 256);
-    for (let i = 0; i < img.data.length; i += 4) {
-        const n = (Math.random() - 0.5) * 18;
-        img.data[i]   = Math.max(0, Math.min(255, img.data[i]   + n));
-        img.data[i+1] = Math.max(0, Math.min(255, img.data[i+1] + n));
-        img.data[i+2] = Math.max(0, Math.min(255, img.data[i+2] + n));
+
+    // fine grain so the grass isn't a flat fill
+    const img = ctx.getImageData(0, 0, w, h);
+    const d = img.data;
+    for (let i = 0; i < d.length; i += 4) {
+        const n = (Math.random() - 0.5) * 16;
+        d[i] += n; d[i + 1] += n; d[i + 2] += n * 0.6;
     }
     ctx.putImageData(img, 0, 0);
 
+    // markings, in world units with the origin on the centre spot
+    ctx.save();
+    ctx.translate(w / 2, h / 2);
+    ctx.scale(PX, PX);
+    ctx.strokeStyle = '#f4f6f2';
+    ctx.fillStyle = '#f4f6f2';
+    ctx.lineWidth = 0.42;
+    const W2 = FIELD_W / 2, L2 = FIELD_L / 2;
+
+    ctx.strokeRect(-W2, -L2, FIELD_W, FIELD_L);
+    ctx.beginPath(); ctx.moveTo(0, -L2); ctx.lineTo(0, L2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 0, CIRCLE_R, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 0, 0.55, 0, Math.PI * 2); ctx.fill();
+
+    [-1, 1].forEach(side => {
+        const gx = side * W2;                       // goal line
+        ctx.strokeRect(Math.min(gx, gx - side * PEN_DEPTH), -PEN_WIDTH / 2, PEN_DEPTH, PEN_WIDTH);
+        ctx.strokeRect(Math.min(gx, gx - side * BOX_DEPTH), -BOX_WIDTH / 2, BOX_DEPTH, BOX_WIDTH);
+        const sx = gx - side * PEN_SPOT;
+        ctx.beginPath(); ctx.arc(sx, 0, 0.5, 0, Math.PI * 2); ctx.fill();
+        // the "D": only the part of the circle outside the penalty area
+        const a = Math.acos((PEN_DEPTH - PEN_SPOT) / CIRCLE_R);
+        ctx.beginPath();
+        if (side < 0) ctx.arc(sx, 0, CIRCLE_R, -a, a);
+        else          ctx.arc(sx, 0, CIRCLE_R, Math.PI - a, Math.PI + a);
+        ctx.stroke();
+    });
+    // corner arcs
+    [[-W2, -L2, 0], [W2, -L2, Math.PI / 2], [W2, L2, Math.PI], [-W2, L2, -Math.PI / 2]].forEach(([x, y, start]) => {
+        ctx.beginPath(); ctx.arc(x, y, 1.6, start, start + Math.PI / 2); ctx.stroke();
+    });
+    ctx.restore();
+
     const tex = new THREE.CanvasTexture(c);
-    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-    tex.repeat.set(1, 7);
-    tex.anisotropy = 4;
+    tex.encoding = THREE.sRGBEncoding;
+    tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
     return tex;
 }
 
 function buildField() {
-    const stadium = getSelectedStadium();
-    // When the selected stadium provides its own baked pitch (Camp Nou,
-    // Old Trafford, etc.) we don't want to slap our flat green plane on top —
-    // that's the "sticker on a stadium" look we just got rid of.  Render only
-    // an invisible shadow-receiver so player shadows still land somewhere, and
-    // let the imported GLB pitch + line markings shine through.
-    if (stadium?.nativePitch) {
-        const shadowGeo = new THREE.PlaneGeometry(FIELD_W + 40, FIELD_L + 30);
-        const shadowMat = new THREE.ShadowMaterial({ opacity: 0.32 });
-        const shadowPlane = new THREE.Mesh(shadowGeo, shadowMat);
-        shadowPlane.rotation.x = -Math.PI / 2;
-        shadowPlane.position.y = 0.02;
-        shadowPlane.receiveShadow = true;
-        scene.add(shadowPlane);
+    const pitch = new THREE.Mesh(
+        new THREE.PlaneGeometry(FIELD_W + PITCH_MARGIN * 2, FIELD_L + PITCH_MARGIN * 2),
+        new THREE.MeshLambertMaterial({ map: makePitchTexture() })
+    );
+    pitch.rotation.x = -Math.PI / 2;
+    pitch.name = 'own-pitch';                 // hidden when the stadium brings its own
+    scene.add(pitch);
 
-        // dark concrete plane far outside the stadium so any gap in the import
-        // (cutaways, missing back wall) reads as ground instead of black void
-        const outerGeo = new THREE.PlaneGeometry(2000, 2000);
-        const outerMat = new THREE.MeshStandardMaterial({ color: stadium.outerGroundColor ?? 0x05060a, roughness: 1.0, metalness: 0.0 });
-        const outer = new THREE.Mesh(outerGeo, outerMat);
-        outer.rotation.x = -Math.PI / 2;
-        outer.position.y = -0.6;
-        scene.add(outer);
-        return;
-    }
+    // plain grass just under the stadium's pitch: scans have cracks and holes
+    const under = new THREE.Mesh(
+        new THREE.PlaneGeometry(FIELD_W + PITCH_MARGIN * 2, FIELD_L + PITCH_MARGIN * 2),
+        new THREE.MeshLambertMaterial({ color: srgb(0x3a6a2c) })
+    );
+    under.rotation.x = -Math.PI / 2;
+    under.position.y = -0.12;
+    scene.add(under);
 
-    const stripe = makeStripeTexture();
-    const fieldGeo = new THREE.PlaneGeometry(FIELD_W, FIELD_L);
-    const fieldMat = new THREE.MeshStandardMaterial({
-        map: stripe,
-        roughness: 0.92,
-        metalness: 0.0,
-        color: 0xffffff,
-    });
-    const field = new THREE.Mesh(fieldGeo, fieldMat);
-    field.rotation.x = -Math.PI / 2;
-    field.receiveShadow = true;
-    scene.add(field);
+    // plain turf far beyond the stadium so gaps in a model never show a void
+    const outer = new THREE.Mesh(
+        new THREE.PlaneGeometry(3000, 3000),
+        new THREE.MeshLambertMaterial({ color: srgb(0x1c2a1f) })
+    );
+    outer.rotation.x = -Math.PI / 2;
+    outer.position.y = -1.2;
+    scene.add(outer);
+}
 
-    // surrounding dark border (visual track)
-    const borderGeo = new THREE.PlaneGeometry(FIELD_W + 36, FIELD_L + 30);
-    const borderMat = new THREE.MeshStandardMaterial({ color: COLORS.ground, roughness: 1.0 });
-    const border = new THREE.Mesh(borderGeo, borderMat);
-    border.rotation.x = -Math.PI / 2;
-    border.position.y = -0.05;
-    border.receiveShadow = true;
-    scene.add(border);
+// ----------- goals -----------
+const GOAL_DEPTH = 4.5;
 
-    // markings
-    const lineMat = new THREE.LineBasicMaterial({ color: COLORS.line, transparent: true, opacity: 0.9 });
-    const drawSegs = (pts) => {
-        const g = new THREE.BufferGeometry().setFromPoints(pts);
-        scene.add(new THREE.Line(g, lineMat));
-    };
-
-    // outer boundary
-    drawSegs([
-        new THREE.Vector3(-FIELD_W/2, 0.05, -FIELD_L/2),
-        new THREE.Vector3( FIELD_W/2, 0.05, -FIELD_L/2),
-        new THREE.Vector3( FIELD_W/2, 0.05,  FIELD_L/2),
-        new THREE.Vector3(-FIELD_W/2, 0.05,  FIELD_L/2),
-        new THREE.Vector3(-FIELD_W/2, 0.05, -FIELD_L/2),
-    ]);
-    // halfway line
-    drawSegs([
-        new THREE.Vector3(0, 0.05, -FIELD_L/2),
-        new THREE.Vector3(0, 0.05,  FIELD_L/2),
-    ]);
-    // penalty boxes
-    const PB_W = 22, PB_D = 14;
-    [-1, 1].forEach(side => {
-        drawSegs([
-            new THREE.Vector3(side * (FIELD_W/2 - PB_D), 0.05, -PB_W/2),
-            new THREE.Vector3(side * (FIELD_W/2),         0.05, -PB_W/2),
-        ]);
-        drawSegs([
-            new THREE.Vector3(side * (FIELD_W/2 - PB_D), 0.05,  PB_W/2),
-            new THREE.Vector3(side * (FIELD_W/2),         0.05,  PB_W/2),
-        ]);
-        drawSegs([
-            new THREE.Vector3(side * (FIELD_W/2 - PB_D), 0.05, -PB_W/2),
-            new THREE.Vector3(side * (FIELD_W/2 - PB_D), 0.05,  PB_W/2),
-        ]);
-    });
-
-    // center circle
-    const ringGeo = new THREE.RingGeometry(9.6, 10, 64);
-    const ringMat = new THREE.MeshBasicMaterial({ color: COLORS.line, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
-    const ring = new THREE.Mesh(ringGeo, ringMat);
-    ring.rotation.x = -Math.PI / 2;
-    ring.position.y = 0.05;
-    scene.add(ring);
-
-    // center spot
-    const spotGeo = new THREE.CircleGeometry(0.6, 24);
-    const spot = new THREE.Mesh(spotGeo, ringMat);
-    spot.rotation.x = -Math.PI / 2;
-    spot.position.y = 0.06;
-    scene.add(spot);
+function makeNetTexture() {
+    const c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const ctx = c.getContext('2d');
+    ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+    ctx.lineWidth = 5;
+    ctx.strokeRect(0, 0, 64, 64);
+    const tex = new THREE.CanvasTexture(c);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.encoding = THREE.sRGBEncoding;
+    return tex;
 }
 
 function buildGoals() {
-    if (getSelectedStadium()?.nativePitch) return;
-
-    const postMat = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.6, roughness: 0.3 });
-    const netMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35 });
+    const postMat = litMat(0xffffff);
+    const baseNet = makeNetTexture();
+    const netPanel = (wUnits, hUnits) => {
+        const tex = baseNet.clone();
+        tex.needsUpdate = true;
+        tex.repeat.set(wUnits / 0.9, hUnits / 0.9);   // one mesh square ≈ 0.9 units
+        return new THREE.Mesh(
+            new THREE.PlaneGeometry(wUnits, hUnits),
+            new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthWrite: false })
+        );
+    };
+    const R = 0.24;
 
     [-1, 1].forEach(side => {
         const x = side * FIELD_W / 2;
-        // posts
-        const postGeo = new THREE.CylinderGeometry(0.18, 0.18, GOAL_H, 12);
-        const post1 = new THREE.Mesh(postGeo, postMat);
-        post1.position.set(x, GOAL_H/2, -GOAL_W/2);
-        post1.castShadow = true;
-        scene.add(post1);
+        const back = x + side * GOAL_DEPTH;
 
-        const post2 = new THREE.Mesh(postGeo, postMat);
-        post2.position.set(x, GOAL_H/2, GOAL_W/2);
-        post2.castShadow = true;
-        scene.add(post2);
+        [-1, 1].forEach(zs => {
+            const post = new THREE.Mesh(new THREE.CylinderGeometry(R, R, GOAL_H, 12), postMat);
+            post.position.set(x, GOAL_H / 2, zs * GOAL_W / 2);
+            scene.add(post);
+        });
+        const bar = new THREE.Mesh(new THREE.CylinderGeometry(R, R, GOAL_W + R * 2, 12), postMat);
+        bar.rotation.x = Math.PI / 2;
+        bar.position.set(x, GOAL_H, 0);
+        scene.add(bar);
 
-        // crossbar
-        const crossGeo = new THREE.CylinderGeometry(0.18, 0.18, GOAL_W, 12);
-        const cross = new THREE.Mesh(crossGeo, postMat);
-        cross.rotation.x = Math.PI / 2;
-        cross.position.set(x, GOAL_H, 0);
-        cross.castShadow = true;
-        scene.add(cross);
+        const rear = netPanel(GOAL_W, GOAL_H);
+        rear.rotation.y = Math.PI / 2;
+        rear.position.set(back, GOAL_H / 2, 0);
+        scene.add(rear);
 
-        // back of goal — net mesh as line grid
-        const depth = 5 * side; // points outward
-        const netGroup = new THREE.Group();
-        const cols = 9, rows = 6;
-        for (let i = 0; i <= cols; i++) {
-            const t = i / cols;
-            const z = -GOAL_W/2 + t * GOAL_W;
-            const pts = [
-                new THREE.Vector3(x, 0, z),
-                new THREE.Vector3(x, GOAL_H, z),
-                new THREE.Vector3(x + depth, GOAL_H, z),
-                new THREE.Vector3(x + depth, 0, z),
-            ];
-            const g = new THREE.BufferGeometry().setFromPoints(pts);
-            netGroup.add(new THREE.Line(g, netMat));
-        }
-        for (let j = 0; j <= rows; j++) {
-            const t = j / rows;
-            const y = t * GOAL_H;
-            const pts = [
-                new THREE.Vector3(x, y, -GOAL_W/2),
-                new THREE.Vector3(x + depth, y, -GOAL_W/2),
-                new THREE.Vector3(x + depth, y,  GOAL_W/2),
-                new THREE.Vector3(x, y,  GOAL_W/2),
-            ];
-            const g = new THREE.BufferGeometry().setFromPoints(pts);
-            netGroup.add(new THREE.Line(g, netMat));
-        }
-        scene.add(netGroup);
+        const roof = netPanel(GOAL_DEPTH, GOAL_W);
+        roof.rotation.x = -Math.PI / 2;
+        roof.rotation.z = Math.PI / 2;
+        roof.position.set(x + side * GOAL_DEPTH / 2, GOAL_H, 0);
+        scene.add(roof);
+
+        [-1, 1].forEach(zs => {
+            const flank = netPanel(GOAL_DEPTH, GOAL_H);
+            flank.position.set(x + side * GOAL_DEPTH / 2, GOAL_H / 2, zs * GOAL_W / 2);
+            scene.add(flank);
+        });
     });
 }
 
+// ----------- advertising boards -----------
+// Far touchline and behind both goals; the camera side stays open.
+function makeBoardTexture(lines) {
+    const c = document.createElement('canvas');
+    c.width = 1024; c.height = 64;
+    const ctx = c.getContext('2d');
+    const panelW = c.width / lines.length;
+    lines.forEach((text, i) => {
+        const dark = i % 2 === 0;
+        ctx.fillStyle = dark ? '#121512' : '#ffffff';
+        ctx.fillRect(i * panelW, 0, panelW, 64);
+        ctx.fillStyle = dark ? '#ffffff' : '#121512';
+        ctx.font = '800 44px "Barlow Condensed", "Arial Narrow", Arial, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text.toUpperCase(), i * panelW + panelW / 2, 35, panelW - 40);
+    });
+    const tex = new THREE.CanvasTexture(c);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.encoding = THREE.sRGBEncoding;
+    tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    return tex;
+}
 
-function makePlayer(color, isKeeper, controlled) {
+function buildBoards() {
+    const stadium = getSelectedStadium();
+    const base = makeBoardTexture(['Pitch Royale', stadium.name]);
+    const H = 1.9, T = 0.5;
+    const blank = new THREE.MeshLambertMaterial({ color: srgb(0x1a1d1a) });
+    const board = (length) => {
+        const tex = base.clone();
+        tex.needsUpdate = true;
+        tex.repeat.x = Math.max(1, Math.round(length / 34));
+        const face = new THREE.MeshBasicMaterial({ map: tex });
+        // BoxGeometry faces: +x, -x, +y, -y, +z, -z — only +z carries the print
+        return new THREE.Mesh(new THREE.BoxGeometry(length, H, T), [blank, blank, blank, blank, face, blank]);
+    };
+
+    const far = board(FIELD_W + 16);
+    far.position.set(0, H / 2, -(FIELD_L / 2 + 4.5));
+    scene.add(far);
+
+    [-1, 1].forEach(side => {
+        const end = board(FIELD_L + 12);
+        end.rotation.y = -side * Math.PI / 2;        // printed face towards the pitch
+        end.position.set(side * (FIELD_W / 2 + GOAL_DEPTH + 3.5), H / 2, 0);
+        scene.add(end);
+    });
+}
+
+// ----------- players -----------
+const KIT = {
+    1: { shirt: COLORS.team1, shorts: 0xffffff, socks: COLORS.team1, keeper: 0xf2c230 },
+    2: { shirt: COLORS.team2, shorts: 0x10214f, socks: COLORS.team2, keeper: 0x2fb463 },
+};
+const SKIN_TONES = [0xe2c39a, 0xc68e5e, 0x8a5a3b, 0xf0d2b0];
+const HAIR_TONES = [0x1c1612, 0x4a2f1b, 0x111111, 0xb08a4a];
+
+// A small footballer built from primitives: boots, socks, legs, shorts,
+// shirt with sleeves, arms, head and hair. Legs and arms hang from pivots
+// so animatePlayers() can swing them. The figure faces local +z.
+function makePlayer(team, isKeeper, controlled, look) {
+    const kit = KIT[team];
+    const shirtHex = isKeeper ? kit.keeper : kit.shirt;
+    const shirt  = litMat(shirtHex);
+    const shorts = litMat(isKeeper ? 0x161616 : kit.shorts);
+    const socks  = litMat(isKeeper ? shirtHex : kit.socks);
+    const skin   = litMat(SKIN_TONES[look % SKIN_TONES.length]);
+    const hair   = litMat(HAIR_TONES[look % HAIR_TONES.length]);
+    const boot   = litMat(0x141414);
+
     const group = new THREE.Group();
-
-    // toneMapped:false → bypass the renderer's ACES filmic curve so the team
-    // colours stay saturated red/blue instead of getting washed to pastel.
-    const bodyMat = new THREE.MeshBasicMaterial({ color: color, toneMapped: false });
-    const body = new THREE.Mesh(
-        new THREE.CylinderGeometry(PLAYER_SIZE/2, PLAYER_SIZE/2 + 0.4, PLAYER_SIZE, 16),
-        bodyMat
-    );
-    // lift bottom 0.05 above pitch to avoid z-fight with the procedural field plane
-    body.position.y = PLAYER_SIZE/2 + 0.05;
-    // No real-time cast shadow — the cylinder + sphere silhouette projected
-    // by the corner spotlight produces an elongated capsule-with-cap shape
-    // that, viewed from the gameplay camera, reads as a fighter-jet outline
-    // on the pitch. We replace it with a simple round dark blob below.
-    body.castShadow = false;
+    const body = new THREE.Group();
     group.add(body);
 
-    const headMat = new THREE.MeshBasicMaterial({ color: COLORS.skin, toneMapped: false });
-    const head = new THREE.Mesh(
-        new THREE.SphereGeometry(PLAYER_SIZE * 0.35, 16, 12),
-        headMat
-    );
-    head.position.y = PLAYER_SIZE + PLAYER_SIZE * 0.32 + 0.05;
-    head.castShadow = false;
-    group.add(head);
+    const cyl = (rTop, rBot, len, mat) => new THREE.Mesh(new THREE.CylinderGeometry(rTop, rBot, len, 12), mat);
 
-    // Fake under-foot shadow blob — replaces the real cast shadow. Stays
-    // round regardless of camera angle and reads cleanly as a footprint
-    // rather than as an aircraft silhouette.
+    const HIP = 2.75;
+    const makeLeg = (x) => {
+        const pivot = new THREE.Group();
+        pivot.position.set(x, HIP, 0);
+        const thigh = cyl(0.36, 0.28, 1.5, skin);  thigh.position.y = -0.75;
+        const sock  = cyl(0.3, 0.26, 1.1, socks);  sock.position.y = -1.95;
+        const shoe  = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.36, 1.05), boot);
+        shoe.position.set(0, -2.57, 0.22);
+        pivot.add(thigh, sock, shoe);
+        body.add(pivot);
+        return pivot;
+    };
+    const legL = makeLeg(-0.42);
+    const legR = makeLeg(0.42);
+
+    const pants = cyl(0.8, 0.86, 1.0, shorts);
+    pants.position.y = HIP + 0.05;
+    pants.scale.z = 0.7;
+    body.add(pants);
+
+    const torso = cyl(0.98, 0.78, 2.0, shirt);
+    torso.position.y = HIP + 1.5;
+    torso.scale.z = 0.62;
+    body.add(torso);
+
+    const SHOULDER = HIP + 2.3;
+    const makeArm = (x) => {
+        const pivot = new THREE.Group();
+        pivot.position.set(x, SHOULDER, 0);
+        const sleeve  = cyl(0.3, 0.27, 0.9, shirt);  sleeve.position.y = -0.4;
+        const forearm = cyl(0.22, 0.19, 1.25, skin); forearm.position.y = -1.4;
+        const hand = new THREE.Mesh(new THREE.SphereGeometry(isKeeper ? 0.34 : 0.22, 10, 8), isKeeper ? litMat(0xffffff) : skin);
+        hand.position.y = -2.1;
+        pivot.add(sleeve, forearm, hand);
+        pivot.rotation.z = x < 0 ? -0.12 : 0.12;
+        body.add(pivot);
+        return pivot;
+    };
+    const armL = makeArm(-1.12);
+    const armR = makeArm(1.12);
+
+    const neck = cyl(0.26, 0.3, 0.4, skin);
+    neck.position.y = SHOULDER + 0.35;
+    body.add(neck);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.62, 16, 12), skin);
+    head.position.y = SHOULDER + 1.0;
+    body.add(head);
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.66, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.55), hair);
+    cap.position.set(0, SHOULDER + 1.04, -0.06);
+    body.add(cap);
+
+    // soft contact shadow; real shadow maps are off (see initThree)
     const shadowBlob = new THREE.Mesh(
-        new THREE.CircleGeometry(PLAYER_SIZE * 0.85, 28),
-        new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.42, depthWrite: false })
+        new THREE.CircleGeometry(2.0, 24),
+        new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.32, depthWrite: false })
     );
     shadowBlob.rotation.x = -Math.PI / 2;
-    shadowBlob.position.y = 0.04;
+    shadowBlob.position.y = 0.05;
     group.add(shadowBlob);
 
-    // controlled-player ring under feet
+    // ring under the player you control; it grows while a shot is charging
     if (controlled) {
         const ring = new THREE.Mesh(
-            new THREE.RingGeometry(PLAYER_SIZE * 0.7, PLAYER_SIZE * 0.95, 32),
-            new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.85, side: THREE.DoubleSide, toneMapped: false })
+            new THREE.RingGeometry(2.4, 2.9, 40),
+            new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false })
         );
         ring.rotation.x = -Math.PI / 2;
-        ring.position.y = 0.08;
+        ring.position.y = 0.07;
         group.userData.ring = ring;
         group.add(ring);
     }
 
-    // keeper jersey marker — gold band
-    if (isKeeper) {
-        const band = new THREE.Mesh(
-            new THREE.CylinderGeometry(PLAYER_SIZE/2 + 0.05, PLAYER_SIZE/2 + 0.45, 0.6, 16),
-            new THREE.MeshStandardMaterial({ color: COLORS.keeperBand, metalness: 0.7, roughness: 0.3 })
-        );
-        band.position.y = PLAYER_SIZE * 0.7;
-        group.add(band);
-    }
-
+    body.scale.setScalar(1.25);      // a little larger than life so they read from the stand
     group.userData.isKeeper = isKeeper;
+    group.userData.rig = { body, legL, legR, armL, armR };
+    group.userData.stride = 0;
+    body.rotation.y = team === 1 ? Math.PI / 2 : -Math.PI / 2;   // face the opponent's goal
     return group;
 }
 
@@ -427,91 +455,133 @@ function buildPlayers() {
     team1Players = [];
     team2Players = [];
 
-    // Optional per-stadium VISUAL scale — shrinks the player mesh group
-    // (cylinder + head + ring + shadow blob) without touching collision /
-    // physics constants. Used by Etihad to bring the on-screen player-to-
-    // pitch ratio (PLAYER_SIZE/FIELD_W = 3.1%) closer to the FIFA-broadcast
-    // ratio (~1.5%, see 3.png) — pure cosmetic, gameplay distances unchanged.
-    const stadium = getSelectedStadium();
-    const visualScale = stadium?.visualPlayerScale ?? 1.0;
-    const applyScale = (g) => { if (visualScale !== 1.0) g.scale.setScalar(visualScale); };
-    const pitchY = stadium?.pitchY ?? 0;
-
-    // determine which veldspeler is human-controlled per mode
     // Hot-Seat (duo): both veldspelers are human (P1 + P2)
     // CPU mode:       only P1 is human, the other team's veldspeler is the bot
     const isCpu = STATE.mode === 'cpu';
+    const add = (team, isKeeper, human, x, look) => {
+        const p = makePlayer(team, isKeeper, human, look);
+        p.position.set(x, 0, 0);
+        p.team = team;
+        p.isKeeper = isKeeper;
+        p.homePosition = { x, z: 0 };
+        if (!isKeeper) p.userData.isBot = !human;
+        scene.add(p);
+        (team === 1 ? team1Players : team2Players).push(p);
+        return p;
+    };
 
-    // RED team
-    const redKeeper = makePlayer(COLORS.team1, true, false);
-    redKeeper.position.set(-FIELD_W/2 + 5, pitchY, 0);
-    redKeeper.team = 1;
-    redKeeper.isKeeper = true;
-    redKeeper.homePosition = { x: -FIELD_W/2 + 5, z: 0 };
-    applyScale(redKeeper);
-    scene.add(redKeeper);
-    team1Players.push(redKeeper);
-
-    // is this team's veldspeler human or bot?
-    const redIsHuman = isCpu ? STATE.p1.team === 1 : true;
-    const redField = makePlayer(COLORS.team1, false, redIsHuman);
-    redField.position.set(-25, pitchY, 0);
-    redField.team = 1;
-    redField.isKeeper = false;
-    redField.homePosition = { x: -25, z: 0 };
-    redField.userData.isBot = !redIsHuman;
-    applyScale(redField);
-    scene.add(redField);
-    team1Players.push(redField);
-
-    // BLUE team
-    const blueKeeper = makePlayer(COLORS.team2, true, false);
-    blueKeeper.position.set(FIELD_W/2 - 5, pitchY, 0);
-    blueKeeper.team = 2;
-    blueKeeper.isKeeper = true;
-    blueKeeper.homePosition = { x: FIELD_W/2 - 5, z: 0 };
-    applyScale(blueKeeper);
-    scene.add(blueKeeper);
-    team2Players.push(blueKeeper);
-
+    const redIsHuman  = isCpu ? STATE.p1.team === 1 : true;
     const blueIsHuman = isCpu ? STATE.p1.team === 2 : true;
-    const blueField = makePlayer(COLORS.team2, false, blueIsHuman);
-    blueField.position.set(25, pitchY, 0);
-    blueField.team = 2;
-    blueField.isKeeper = false;
-    blueField.homePosition = { x: 25, z: 0 };
-    blueField.userData.isBot = !blueIsHuman;
-    applyScale(blueField);
-    scene.add(blueField);
-    team2Players.push(blueField);
 
-    // assign controllers
+    add(1, true, false, -FIELD_W / 2 + 5, 0);
+    const redField = add(1, false, redIsHuman, -25, 1);
+    add(2, true, false, FIELD_W / 2 - 5, 2);
+    const blueField = add(2, false, blueIsHuman, 25, 3);
+
     controlledP1 = STATE.p1.team === 1 ? redField : blueField;
-    if (isCpu) {
-        controlledP2 = null; // bot drives the other team
-    } else {
-        controlledP2 = STATE.p2.team === 1 ? redField : blueField;
+    controlledP2 = isCpu ? null : (STATE.p2.team === 1 ? redField : blueField);
+}
+
+// Turn each figure towards where it is running and swing its limbs.
+// Purely cosmetic: reads positions, never writes them.
+function animatePlayers(dt) {
+    if (dt <= 0) return;
+    [...team1Players, ...team2Players].forEach(p => {
+        const u = p.userData;
+        const rig = u.rig;
+        if (!rig) return;
+        const dx = p.position.x - (u.lastX ?? p.position.x);
+        const dz = p.position.z - (u.lastZ ?? p.position.z);
+        u.lastX = p.position.x;
+        u.lastZ = p.position.z;
+        const speed = Math.min(80, Math.hypot(dx, dz) / dt);     // units per second
+
+        // heading: direction of travel, or towards the ball when standing
+        let target = null;
+        if (speed > 4) target = Math.atan2(dx, dz);
+        else if (ball) target = Math.atan2(ball.position.x - p.position.x, ball.position.z - p.position.z);
+        if (target !== null) {
+            let diff = target - rig.body.rotation.y;
+            diff = Math.atan2(Math.sin(diff), Math.cos(diff));   // shortest way round
+            rig.body.rotation.y += diff * Math.min(1, dt * (speed > 4 ? 14 : 5));
+        }
+
+        // stride: ease in and out so stopping doesn't snap the legs straight
+        const want = Math.min(1, speed / 35);
+        u.stride += (want - u.stride) * Math.min(1, dt * 10);
+        u.phase = (u.phase || 0) + dt * (6 + speed * 0.22);
+        const swing = Math.sin(u.phase) * 0.95 * u.stride;
+        rig.legL.rotation.x = swing;
+        rig.legR.rotation.x = -swing;
+        rig.armL.rotation.x = -swing * 0.8;
+        rig.armR.rotation.x = swing * 0.8;
+        rig.body.position.y = Math.abs(Math.cos(u.phase)) * 0.12 * u.stride;
+        rig.body.rotation.x = 0.16 * u.stride;                    // lean into the run
+    });
+}
+
+// ----------- ball -----------
+const BALL_VISUAL_R = 0.78;      // drawn smaller than the physics radius (BALL_SIZE)
+
+function makeBallTexture() {
+    const c = document.createElement('canvas');
+    c.width = 256; c.height = 128;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, 256, 128);
+    ctx.fillStyle = '#1a1a1a';
+    // staggered dark patches so you can see the ball roll
+    for (let row = 0; row < 3; row++) {
+        for (let col = 0; col < 6; col++) {
+            const x = (col + (row % 2 ? 0.5 : 0)) * (256 / 6);
+            const y = 24 + row * 40;
+            ctx.beginPath();
+            ctx.ellipse(x, y, 12, 11, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
     }
+    const tex = new THREE.CanvasTexture(c);
+    tex.encoding = THREE.sRGBEncoding;
+    return tex;
 }
 
 function buildBall() {
-    const geo = new THREE.SphereGeometry(BALL_SIZE, 24, 18);
-    const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false });
-    ball = new THREE.Mesh(geo, mat);
-    const stadium = getSelectedStadium();
-    const pitchY = stadium?.pitchY ?? 0;
-    ball.position.set(0, BALL_SIZE + pitchY, 0);
-    ball.castShadow = true;
+    // `ball` carries position + velocity for the physics; the visible sphere
+    // sits lower inside it so it rests on the grass instead of hovering.
+    ball = new THREE.Group();
+    const mesh = new THREE.Mesh(
+        new THREE.SphereGeometry(BALL_VISUAL_R, 24, 16),
+        new THREE.MeshLambertMaterial({ map: makeBallTexture() })
+    );
+    mesh.position.y = BALL_VISUAL_R - BALL_SIZE;
+    ball.add(mesh);
+    ball.userData.mesh = mesh;
+
+    const blob = new THREE.Mesh(
+        new THREE.CircleGeometry(BALL_VISUAL_R * 1.05, 20),
+        new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.3, depthWrite: false })
+    );
+    blob.rotation.x = -Math.PI / 2;
+    ball.userData.shadow = blob;
+    scene.add(blob);
+
+    ball.position.set(0, BALL_SIZE, 0);
     ball.velocity = { x: 0, y: 0, z: 0 };
-    // Match the player visualPlayerScale so ball + figures stay in proportion.
-    const visualScale = stadium?.visualPlayerScale ?? 1.0;
-    if (visualScale !== 1.0) ball.scale.setScalar(visualScale);
     scene.add(ball);
 }
 
+// keep the ball's ground shadow under it; it shrinks as the ball rises
+function updateBallShadow() {
+    const blob = ball && ball.userData.shadow;
+    if (!blob) return;
+    const lift = Math.max(0, ball.position.y - BALL_SIZE);
+    blob.position.set(ball.position.x, 0.06, ball.position.z);
+    blob.scale.setScalar(Math.max(0.45, 1 - lift * 0.07));
+    blob.material.opacity = Math.max(0.1, 0.3 - lift * 0.02);
+}
+
 function positionForKickoff() {
-    const pitchY = getSelectedStadium()?.pitchY ?? 0;
-    ball.position.set(0, BALL_SIZE + pitchY, 0);
+    ball.position.set(0, BALL_SIZE, 0);
     ball.velocity = { x: 0, y: 0, z: 0 };
 
     // clear any in-flight keeper holds and player charges
@@ -524,15 +594,15 @@ function positionForKickoff() {
     });
 
     // home positions
-    team1Players[0].position.set(-FIELD_W/2 + 5, pitchY, 0);   // red keeper
-    team2Players[0].position.set( FIELD_W/2 - 5, pitchY, 0);   // blue keeper
+    team1Players[0].position.set(-FIELD_W/2 + 5, 0, 0);   // red keeper
+    team2Players[0].position.set( FIELD_W/2 - 5, 0, 0);   // blue keeper
 
     if (STATE.kickoffTeam === 1) {
-        team1Players[1].position.set(-3, pitchY, 0);
-        team2Players[1].position.set( 18, pitchY, 0);
+        team1Players[1].position.set(-3, 0, 0);
+        team2Players[1].position.set( 18, 0, 0);
     } else {
-        team1Players[1].position.set(-18, pitchY, 0);
-        team2Players[1].position.set( 3, pitchY, 0);
+        team1Players[1].position.set(-18, 0, 0);
+        team2Players[1].position.set( 3, 0, 0);
     }
 }
 
@@ -641,6 +711,9 @@ function animate(now) {
         physicsAccum = 0;                          // no catch-up on resume
     }
 
+    if (!STATE.paused) animatePlayers(frameDt);
+    updateBallShadow();
+    updateCamera(frameDt);
     updateChargeFx();
     updateTimer();
     renderer.render(scene, camera);
@@ -662,11 +735,6 @@ function updateChargeFx() {
         const cur = ring.scale.x;
         ring.scale.setScalar(cur + (target - cur) * 0.35);
         ring.material.opacity = 0.7 + t * 0.3;
-        // also a subtle pulse on the body's emissive when fully charged
-        const body = p.children[0];
-        if (body && body.material && body.material.emissiveIntensity !== undefined) {
-            body.material.emissiveIntensity = 0.18 + t * 0.6;
-        }
     });
 }
 
@@ -1360,8 +1428,9 @@ function updateBall() {
     }
 
     // visual rotation
-    ball.rotation.x += ball.velocity.z * 0.12;
-    ball.rotation.z -= ball.velocity.x * 0.12;
+    const ballMesh = ball.userData.mesh;
+    ballMesh.rotation.x += ball.velocity.z * 0.16;
+    ballMesh.rotation.z -= ball.velocity.x * 0.16;
 }
 
 function isSticky() {
@@ -1400,6 +1469,7 @@ function scoreGoal(scoringTeam) {
     $('goal-flash-sub').textContent = scorer.name;
 
     const flash = $('goal-flash');
+    flash.dataset.team = scoringTeam === 1 ? 'red' : 'blue';   // band takes the scorer's colour
     flash.hidden = false;
     flash.style.animation = 'none';
     void flash.offsetWidth;
@@ -1450,9 +1520,9 @@ function endGame() {
     $('over-s2').textContent = STATE.score2;
 
     let winner;
-    if (STATE.score1 > STATE.score2) winner = `${redPlayer.name} WINT`;
-    else if (STATE.score2 > STATE.score1) winner = `${bluePlayer.name} WINT`;
-    else winner = '— GELIJKSPEL —';
+    if (STATE.score1 > STATE.score2) winner = `${redPlayer.name} wint`;
+    else if (STATE.score2 > STATE.score1) winner = `${bluePlayer.name} wint`;
+    else winner = 'Gelijkspel';
     $('over-winner').textContent = winner;
 
     gotoScreen('over');
