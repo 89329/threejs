@@ -3,10 +3,20 @@
 // Launch, setup, coin, pause, over and HUD bindings
 // =====================================================
 
+// ----------- TOUCH DEVICES -----------
+// Phones and tablets get on-screen controls and play against the computer
+// (there is no second keyboard). ?touch in the URL forces it on a desktop.
+const IS_TOUCH = (window.matchMedia && matchMedia('(hover: none) and (pointer: coarse)').matches)
+    || new URLSearchParams(location.search).has('touch');
+if (IS_TOUCH) document.documentElement.classList.add('is-touch');
+
 // ----------- LAUNCH -----------
 function bindLaunch() {
-    $('launch-cta').addEventListener('click', goToSetup);
+    if (IS_TOUCH) setMode('cpu');
+    $('launch-cta').addEventListener('click', () => { setMode('duo'); goToSetup(); });
+    $('launch-cpu').addEventListener('click', () => { setMode('cpu'); goToSetup(); });
     $('launch-stadium-pick').addEventListener('click', openStadiumPicker);
+    updateLaunchLevelLabel();
 
     // "Terug" in the top bar of the setup and toss screens
     document.querySelectorAll('[data-back]').forEach(btn => {
@@ -16,6 +26,10 @@ function bindLaunch() {
 function updateLaunchStadiumLabel() {
     const lbl = $('launch-stadium-name');
     if (lbl) lbl.textContent = getSelectedStadium().name;
+}
+function updateLaunchLevelLabel() {
+    const lbl = $('launch-cpu-level');
+    if (lbl) lbl.textContent = getLevel().label;
 }
 function goToSetup() {
     gotoScreen('setup');
@@ -30,16 +44,9 @@ function bindSetup() {
 
     // mode toggle ---------------------------------------
     document.querySelectorAll('.mode-tab').forEach(btn => {
-        btn.addEventListener('click', () => {
-            STATE.mode = btn.dataset.mode;
-            document.querySelectorAll('.mode-tab').forEach(b => {
-                const on = b === btn;
-                b.classList.toggle('active', on);
-                b.setAttribute('aria-selected', on ? 'true' : 'false');
-            });
-            applyMode();
-        });
+        btn.addEventListener('click', () => setMode(btn.dataset.mode));
     });
+    renderLevels();
 
     $('swap-teams').addEventListener('click', () => {
         const tmp = STATE.p1.team;
@@ -67,8 +74,64 @@ function bindSetup() {
         goToCoin();
     });
 
+    $('level-list')?.addEventListener('keydown', (e) => {
+        const ids = Object.keys(LEVELS);
+        const step = (e.key === 'ArrowDown' || e.key === 'ArrowRight') ? 1 : (e.key === 'ArrowUp' || e.key === 'ArrowLeft') ? -1 : 0;
+        if (!step) return;
+        e.preventDefault();
+        const next = ids[(ids.indexOf(STATE.difficulty) + step + ids.length) % ids.length];
+        setLevel(next);
+        renderLevels();
+        updateLaunchLevelLabel();
+        $('level-list').querySelector(`[data-level="${next}"]`)?.focus();
+    });
+
     renderRosterColors();
     applyMode();
+}
+
+// Two players or against the computer: from the start screen or the tabs.
+function setMode(mode) {
+    STATE.mode = mode === 'cpu' ? 'cpu' : 'duo';
+    document.querySelectorAll('.mode-tab').forEach(b => {
+        const on = b.dataset.mode === STATE.mode;
+        b.classList.toggle('active', on);
+        b.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    applyMode();
+}
+
+// The three levels, one row each, built once from LEVELS and then re-flagged.
+function renderLevels() {
+    const list = $('level-list');
+    if (!list) return;
+    if (!list.children.length) {
+        Object.entries(LEVELS).forEach(([id, lvl]) => {
+            const row = document.createElement('button');
+            row.type = 'button';
+            row.className = 'level__btn';
+            row.dataset.level = id;
+            row.setAttribute('role', 'radio');
+            const name = document.createElement('span');
+            name.className = 'level__name';
+            name.textContent = lvl.label;
+            const desc = document.createElement('span');
+            desc.className = 'level__desc';
+            desc.textContent = lvl.desc;
+            row.append(name, desc);
+            row.addEventListener('click', () => {
+                setLevel(id);
+                renderLevels();
+                updateLaunchLevelLabel();
+            });
+            list.appendChild(row);
+        });
+    }
+    [...list.children].forEach(row => {
+        const on = row.dataset.level === STATE.difficulty;
+        row.setAttribute('aria-checked', on ? 'true' : 'false');
+        row.tabIndex = on ? 0 : -1;
+    });
 }
 
 function applyMode() {
@@ -205,6 +268,7 @@ const keys = {};
 
 function startGame() {
     STATE.paused = false;
+    resetTouch();
     gotoScreen('playing');
 
     // hud names + colors
@@ -214,6 +278,8 @@ function startGame() {
     runKickoffCountdown(() => {
         STATE.gameStartTime = Date.now();
         STATE.inputLocked = false;
+        // started with the phone upright: wait until it is turned
+        if (IS_TOUCH && isPortrait()) togglePause(true);
     });
 }
 
@@ -312,7 +378,7 @@ function paintHud() {
         [['↑', '←', '↓', '→'], 'bewegen'],
         [['Enter'], 'schieten'],
         [['Shift'], 'terugspelen'],
-    ], cpu ? 'speelt vanzelf' : '');
+    ], cpu ? `niveau ${getLevel().label.toLowerCase()}` : '');
 }
 
 // ----------- kickoff countdown -----------
@@ -342,4 +408,120 @@ function runKickoffCountdown(done) {
         }
     };
     tick();
+}
+
+
+// ----------- TOUCH CONTROLS -----------
+// Left half of the pitch: a stick that appears under your thumb. Right: Schiet
+// (hold to charge, release to shoot, exactly like the space bar) and Pass (the
+// Q key: back to your keeper, or ask him for the ball). The stick is analogue;
+// movePlayer() reads touchMove for player 1.
+const touchMove = { active: false, x: 0, z: 0 };
+const STICK_TRAVEL = 52;        // px the knob can move from the centre
+const STICK_DEAD = 0.18;        // ignore tiny movements of the thumb
+
+function isPortrait() {
+    return window.matchMedia ? matchMedia('(orientation: portrait)').matches : window.innerHeight > window.innerWidth;
+}
+
+function resetTouch() {
+    touchMove.active = false;
+    touchMove.x = touchMove.z = 0;
+    const stick = $('touch-stick'), knob = $('touch-knob');
+    if (stick) { stick.style.left = ''; stick.style.top = ''; stick.classList.remove('is-held'); }
+    if (knob) knob.style.transform = '';
+    ['touch-shoot', 'touch-pass'].forEach(id => $(id)?.classList.remove('is-down'));
+    $('touch-shoot')?.style.removeProperty('--charge');
+}
+
+function bindTouch() {
+    if (!IS_TOUCH) return;
+    const zone = $('touch-zone'), stick = $('touch-stick'), knob = $('touch-knob');
+    const shoot = $('touch-shoot'), pass = $('touch-pass');
+    if (!zone || !stick || !knob || !shoot || !pass) return;
+
+    // ---- the stick ----
+    let stickId = null, cx = 0, cy = 0;
+    const moveStick = (e) => {
+        let dx = e.clientX - cx, dy = e.clientY - cy;
+        const d = Math.hypot(dx, dy);
+        if (d > STICK_TRAVEL) { dx = dx / d * STICK_TRAVEL; dy = dy / d * STICK_TRAVEL; }
+        knob.style.transform = `translate(${dx}px, ${dy}px)`;
+        // screen right is +x, screen down is +z (towards the camera)
+        touchMove.x = dx / STICK_TRAVEL;
+        touchMove.z = dy / STICK_TRAVEL;
+        touchMove.active = Math.hypot(touchMove.x, touchMove.z) > STICK_DEAD;
+    };
+    zone.addEventListener('pointerdown', (e) => {
+        if (stickId !== null) return;
+        e.preventDefault();
+        stickId = e.pointerId;
+        try { zone.setPointerCapture(stickId); } catch (_) {}   // keeps the thumb's moves when it leaves the zone
+        const r = zone.getBoundingClientRect();
+        cx = e.clientX; cy = e.clientY;
+        stick.style.left = `${cx - r.left}px`;
+        stick.style.top = `${cy - r.top}px`;
+        stick.classList.add('is-held');
+        moveStick(e);
+    });
+    zone.addEventListener('pointermove', (e) => { if (e.pointerId === stickId) moveStick(e); });
+    const releaseStick = (e) => {
+        if (e.pointerId !== stickId) return;
+        stickId = null;
+        touchMove.active = false;
+        touchMove.x = touchMove.z = 0;
+        knob.style.transform = '';
+        stick.style.left = '';
+        stick.style.top = '';
+        stick.classList.remove('is-held');
+    };
+    zone.addEventListener('pointerup', releaseStick);
+    zone.addEventListener('pointercancel', releaseStick);
+
+    // ---- the buttons: each acts as its key while a finger is on it ----
+    const hold = (btn, code, onDown, onUp) => {
+        let id = null;
+        btn.addEventListener('pointerdown', (e) => {
+            if (id !== null) return;
+            e.preventDefault();
+            id = e.pointerId;
+            try { btn.setPointerCapture(id); } catch (_) {}
+            btn.classList.add('is-down');
+            keys[code] = true;
+            keysPressed[code] = true;
+            onDown?.();
+        });
+        const up = (e) => {
+            if (e.pointerId !== id) return;
+            id = null;
+            btn.classList.remove('is-down');
+            keys[code] = false;
+            onUp?.();
+        };
+        btn.addEventListener('pointerup', up);
+        btn.addEventListener('pointercancel', up);
+        btn.addEventListener('contextmenu', (e) => e.preventDefault());
+    };
+
+    // Schiet fills a ring while it charges, so you can see how hard it will be
+    let chargeRaf = 0, chargeStart = 0;
+    const paintCharge = () => {
+        const t = Math.min(1, (performance.now() - chargeStart) / CHARGE_MAX_MS);
+        shoot.style.setProperty('--charge', t.toFixed(3));
+        chargeRaf = t < 1 ? requestAnimationFrame(paintCharge) : 0;
+    };
+    hold(shoot, 'Space',
+        () => { chargeStart = performance.now(); cancelAnimationFrame(chargeRaf); paintCharge(); },
+        () => { cancelAnimationFrame(chargeRaf); chargeRaf = 0; shoot.style.removeProperty('--charge'); });
+    hold(pass, 'KeyQ');
+
+    // turning the phone upright mid-match pauses it
+    if (window.matchMedia) {
+        matchMedia('(orientation: portrait)').addEventListener?.('change', (e) => {
+            if (e.matches && STATE.screen === 'playing' && !STATE.inputLocked) {
+                resetTouch();
+                togglePause(true);
+            }
+        });
+    }
 }

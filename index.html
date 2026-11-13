@@ -2,12 +2,15 @@
 <html lang="nl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#0a0a0a">
     <title>Pitch Royale</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700;800&family=Silkscreen&family=Space+Grotesk:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=77">
+    <link rel="stylesheet" href="styles.css?v=83">
 </head>
 <body>
     <!-- shared icons -->
@@ -39,9 +42,17 @@
             </div>
 
             <div class="launch__row">
-                <p class="launch__lead">Twee spelers, één toetsenbord. Wie na negentig seconden de meeste goals heeft, wint.</p>
+                <p class="launch__lead no-touch">Met z'n tweeën op één toetsenbord, of alleen tegen de computer. Wie na negentig seconden de meeste goals heeft, wint.</p>
+                <p class="launch__lead touch-only">Jij tegen de computer. Wie na negentig seconden de meeste goals heeft, wint.</p>
                 <div class="launch__menu">
-                    <button id="launch-cta" class="btn" type="button">Wedstrijd spelen</button>
+                    <button id="launch-cta" class="btn" type="button">
+                        <span>2 spelers</span>
+                        <span class="btn__meta">één toetsenbord</span>
+                    </button>
+                    <button id="launch-cpu" class="btn btn--line" type="button">
+                        <span>Tegen de computer</span>
+                        <span class="btn__meta" id="launch-cpu-level">Gemiddeld</span>
+                    </button>
                     <button id="launch-stadium-pick" class="btn btn--line" type="button">
                         <span>Stadion kiezen</span>
                         <span class="btn__meta" id="launch-stadium-name">Camp Nou</span>
@@ -88,6 +99,7 @@
                         <div><dt>Terugspelen</dt><dd><kbd>Q</kbd></dd></div>
                     </dl>
                     <p class="keys__note" id="p1-keys-alt" hidden>Tegen de computer werken de pijltjes ook.</p>
+                    <p class="touch-help">Links de stick om te bewegen. Rechts <strong>Schiet</strong> (langer = harder) en <strong>Pass</strong> naar je keeper.</p>
                 </section>
 
                 <div class="halves__mid">
@@ -120,7 +132,9 @@
                     </div>
                     <div class="team-card__cpu" id="p2-cpu" hidden>
                         <p class="team-card__cpu-name">Computer</p>
-                        <p>Speelt vanzelf mee. Jij hoeft alleen je eigen naam in te vullen.</p>
+                        <p class="team-card__cpu-line">Kies hoe sterk hij speelt.</p>
+                        <!-- filled from LEVELS in game.core.js by renderLevels() -->
+                        <div class="level" id="level-list" role="radiogroup" aria-label="Niveau van de computer"></div>
                     </div>
                 </section>
             </div>
@@ -219,6 +233,21 @@
                 <button id="pause-resume" class="btn" type="button">Verder spelen</button>
             </div>
         </div>
+
+        <!-- touch controls, only on phones and tablets (html.is-touch, game.ui.js):
+             a stick on the left that appears where your thumb lands, two buttons on the right -->
+        <div class="touch" id="touch-controls">
+            <div class="touch__zone" id="touch-zone">
+                <div class="stick" id="touch-stick"><div class="stick__knob" id="touch-knob"></div></div>
+            </div>
+            <button class="touch__btn touch__btn--pass" id="touch-pass" type="button" tabindex="-1">Pass</button>
+            <button class="touch__btn touch__btn--shoot" id="touch-shoot" type="button" tabindex="-1">Schiet</button>
+        </div>
+
+        <!-- a phone held upright: the pitch needs the width -->
+        <div class="rotate-hint">
+            <p class="rotate-hint__text">Draai je telefoon een kwartslag</p>
+        </div>
     </div>
 
     <!-- ============ STADIUM PICKER ============ -->
@@ -291,9 +320,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="game.core.js?v=77"></script>
-    <script src="game.stadium.js?v=77"></script>
-    <script src="game.ui.js?v=77"></script>
-    <script src="game.js?v=77"></script>
+    <script src="game.core.js?v=83"></script>
+    <script src="game.stadium.js?v=83"></script>
+    <script src="game.ui.js?v=83"></script>
+    <script src="game.js?v=83"></script>
 </body>
 </html>
