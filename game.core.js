@@ -7,7 +7,7 @@
 // the live site is actually serving the latest game.js. If this string
 // doesn't show up in DevTools console after a refresh, the browser /
 // GitHub Pages CDN is still serving an older cached copy.
-const GAME_BUILD = 'v86-teammates (2026-11-13)';
+const GAME_BUILD = 'v87-restart-loading (2026-11-13)';
 console.log(`%c[GAME] build: ${GAME_BUILD}`,
     'background:#16a34a;color:#000;font-weight:bold;padding:3px 8px;border-radius:3px');
 
@@ -291,6 +291,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // short splash while the web fonts come in
     setTimeout(() => {
         if (STATE.screen === 'loading') gotoScreen('launch', { replace: true });
+        preloadSelectedStadium();
     }, 900);
 
     history.replaceState({ screen: 'loading' }, '', location.pathname + location.search);

@@ -27,6 +27,7 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; }
+.is-touch * { touch-action: manipulation; }
 [hidden] { display: none !important; }
 
 html, body { height: 100%; margin: 0; }
@@ -296,6 +297,24 @@ kbd {
 }
 .pause-btn span { width: 7px; height: 20px; background: var(--ink); }
 .pause-btn:hover { background: var(--yellow); }
+
+/* while the stadium downloads: a small strip under the clock */
+.stadium-loading {
+    position: absolute;
+    z-index: 2;
+    top: 112px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 6px 12px 7px;
+    background: rgba(18, 21, 18, .86);
+    color: #fff;
+    font: 700 15px/1 var(--font-cond);
+    letter-spacing: .03em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    pointer-events: none;
+}
+#stadium-loading-pct { color: var(--yellow); font-variant-numeric: tabular-nums; }
 
 /* countdown on the fourth official's board */
 .kickoff-overlay {
@@ -1175,8 +1194,17 @@ kbd {
     .toss { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
     .toss__circle { grid-column: 1 / -1; grid-row: 1; justify-self: center; }
     .pick-btn { justify-self: stretch; justify-content: center; min-width: 0; }
-    .stadium { grid-template-columns: minmax(0, 1fr); }
-    .stadium-list { max-height: 300px; grid-auto-rows: 44px; }
+    .stadium { display: flex; flex-direction: column; flex: none; min-height: 0; gap: 16px; }
+    .stadium__view { flex: none; height: min(52vh, 420px); min-height: 260px; }
+    .menu .stadium__side { flex: none; }
+    .stadium-list { flex: none; max-height: none; overflow: visible; grid-auto-rows: 52px; }
+    .stadium-row { font-size: 16px; }
+    .stadium__foot {
+        position: sticky;
+        bottom: 0;
+        z-index: 2;
+        background: var(--pit);
+    }
 }
 
 @media (max-width: 640px) {
@@ -1297,6 +1325,19 @@ kbd {
     /* match */
     #game-screen .scorebug { top: 10px; left: 50%; transform: translateX(-50%); }
     #game-screen .pause-btn { top: 10px; right: max(10px, env(safe-area-inset-right)); }
+}
+
+/* ---------- phones held upright (after the picker rules, so these win) ---------- */
+@media (max-width: 480px) {
+    .menu .title { font-size: clamp(24px, 7.5vw, 32px); }
+    /* stadium picker: a shorter model, the name above club and seats, more of the list in view */
+    .stadium__view { height: 34vh; min-height: 220px; --capbar: 86px; }
+    .caption { grid-template-columns: minmax(0, 1fr); align-content: center; gap: 4px; padding: 0 16px; }
+    .caption__name { font-size: 24px; }
+    .caption__sub { justify-items: start; text-align: left; font-size: 14px; }
+    .stadium-list__head, .stadium-row { grid-template-columns: 26px minmax(0, 1fr) auto 66px; gap: 6px; padding: 0 12px; }
+    .stadium-row { font-size: 14px; }
+    .menu .stadium__foot .btn { min-height: 52px; padding: 0 12px; font-size: 16px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

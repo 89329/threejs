@@ -8,7 +8,20 @@
 // (there is no second keyboard). ?touch in the URL forces it on a desktop.
 const IS_TOUCH = (window.matchMedia && matchMedia('(hover: none) and (pointer: coarse)').matches)
     || new URLSearchParams(location.search).has('touch');
-if (IS_TOUCH) document.documentElement.classList.add('is-touch');
+if (IS_TOUCH) {
+    document.documentElement.classList.add('is-touch');
+    // A double tap or pinch zooms Safari in, and in the match (which takes
+    // every touch for the controls) there is no way back out. Block both.
+    ['gesturestart', 'gesturechange', 'gestureend'].forEach(t =>
+        document.addEventListener(t, (e) => e.preventDefault(), { passive: false }));
+    document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: false });
+    let lastTouchEnd = 0;
+    document.addEventListener('touchend', (e) => {
+        const now = Date.now();
+        if (now - lastTouchEnd < 320 && !e.target.closest?.('input')) e.preventDefault();
+        lastTouchEnd = now;
+    }, { passive: false });
+}
 
 // ----------- LAUNCH -----------
 function bindLaunch() {
@@ -268,6 +281,7 @@ const keys = {};
 
 function startGame() {
     STATE.paused = false;
+    STATE.scoring = false;          // a match that ended mid-celebration
     resetTouch();
     gotoScreen('playing');
 

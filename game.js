@@ -700,21 +700,76 @@ function positionForKickoff() {
     curl = null;
     lastKick = null;
 
-    // home positions
-    team1Players[0].position.set(-FIELD_W/2 + 5, 0, 0);   // red keeper
-    team2Players[0].position.set( FIELD_W/2 - 5, 0, 0);   // blue keeper
+    [...team1Players, ...team2Players].forEach(p => {
+        const at = kickoffSpot(p);
+        p.position.set(at.x, 0, at.z);
+    });
+    kickoffHold = { team: STATE.kickoffTeam, ticks: KICKOFF_WAIT };
+}
 
-    // the side kicking off stands at the ball; the teammates start wide
-    if (STATE.kickoffTeam === 1) {
-        team1Players[1].position.set(-3, 0, 0);
-        team2Players[1].position.set( 18, 0, 0);
-        team1Players[2]?.position.set(-16, 0, 14);
-        team2Players[2]?.position.set( 22, 0, -14);
-    } else {
-        team1Players[1].position.set(-18, 0, 0);
-        team2Players[1].position.set( 3, 0, 0);
-        team1Players[2]?.position.set(-22, 0, 14);
-        team2Players[2]?.position.set( 16, 0, -14);
+// ----------- kick-off -----------
+// Everybody in his own half; the side kicking off has its main player at the
+// ball. Until the ball has been played the other side stays outside the centre
+// circle and in its own half (or for four seconds at most, so nobody can stall).
+const KICKOFF_WAIT = 240;          // ticks
+const RESTART_TICKS = 180;         // three seconds from goal to kick-off
+let kickoffHold = null;            // { team, ticks } until the kick-off is taken
+
+function kickoffSpot(p) {
+    const side = p.team === 1 ? -1 : 1;                 // own half
+    const kicking = p.team === STATE.kickoffTeam;
+    const team = p.team === 1 ? team1Players : team2Players;
+    const i = team.indexOf(p);
+    if (i === 0) return { x: side * (FIELD_W / 2 - 5), z: 0 };            // keeper
+    if (i === 1) return { x: side * (kicking ? 3 : 18), z: 0 };          // at the ball, or outside the circle
+    return { x: side * (kicking ? 16 : 22), z: -side * 14 };              // the teammate, wide
+}
+
+function keepOutForKickoff() {
+    if (!kickoffHold) return;
+    const moved = Math.hypot(ball.position.x, ball.position.z) > 2.5;
+    if (lastKick || moved || --kickoffHold.ticks <= 0) { kickoffHold = null; return; }
+    [...team1Players, ...team2Players].forEach(p => {
+        if (p.team === kickoffHold.team || p.userData.isKeeper) return;
+        const side = p.team === 1 ? -1 : 1;
+        if (p.position.x * side < 1) p.position.x = side;           // own half
+        const d = Math.hypot(p.position.x, p.position.z);
+        const r = CIRCLE_R + 1.5;
+        if (d < r) {                                                 // outside the circle
+            const k = r / (d || 1);
+            p.position.x = d ? p.position.x * k : side * r;
+            p.position.z *= d ? k : 0;
+        }
+    });
+}
+
+// After a goal: the ball stays in the net, everybody jogs back to his
+// kick-off spot for three seconds, then play restarts.
+function walkBack() {
+    STATE.restartTicks--;
+    [...team1Players, ...team2Players].forEach(p => {
+        const at = kickoffSpot(p);
+        const dx = at.x - p.position.x, dz = at.z - p.position.z;
+        const d = Math.hypot(dx, dz);
+        const want = Math.min(RUN_SPEED * 0.8, d * 0.08);
+        if (d > 0.3) steer(p, dx / d * want, dz / d * want, RUN_ACCEL);
+        else steer(p, 0, 0, RUN_BRAKE);
+        p.position.x += p.userData.vx || 0;
+        p.position.z += p.userData.vz || 0;
+        p.userData.aimX = p.team === 1 ? 1 : -1;
+        p.userData.aimZ = 0;
+        sprintFor(p, false);                                         // catch their breath
+    });
+    separatePlayers();
+    if (STATE.restartTicks === 50) {                                 // the ball goes back on the spot
+        ball.position.set(0, BALL_SIZE, 0);
+        ball.velocity = { x: 0, y: 0, z: 0 };
+    }
+    if (STATE.restartTicks <= 0) {
+        positionForKickoff();
+        Object.keys(keys).forEach(k => keys[k] = false);   // a held button doesn't fire on restart
+        STATE.scoring = false;
+        STATE.inputLocked = false;
     }
 }
 
@@ -854,6 +909,11 @@ function updateChargeFx() {
 
 function gameTick() {
     if (STATE.paused) return;
+    if (STATE.scoring) {
+        walkBack();
+        for (const k in keysPressed) keysPressed[k] = false;
+        return;
+    }
     if (!STATE.inputLocked && !STATE.scoring) {
         if (STATE.mode === 'cpu') {
             movePlayer(controlledP1, {
@@ -882,6 +942,7 @@ function gameTick() {
 
     updateAI();
     separatePlayers();
+    keepOutForKickoff();
     updateCarry();
     applyCurl();
     updateBall();
@@ -1783,11 +1844,18 @@ function scoreGoal(scoringTeam) {
     $('hud-s1').textContent = STATE.score1;
     $('hud-s2').textContent = STATE.score2;
 
-    // freeze the ball IMMEDIATELY at center so further physics can't re-trigger
-    ball.position.set(0, BALL_SIZE, 0);
+    // the ball comes to rest in the net
+    const net = scoringTeam === 1 ? 1 : -1;               // red scores in the right-hand goal
+    ball.position.x = net * (FIELD_W / 2 + 2.5);
+    ball.position.y = BALL_SIZE;
     ball.velocity.x = 0;
     ball.velocity.y = 0;
     ball.velocity.z = 0;
+    carrier = null;
+    curl = null;
+    passTarget = null;
+    lastKick = null;
+    kickoffHold = null;
 
     // who scored
     const scorer = STATE.p1.team === scoringTeam ? STATE.p1 : STATE.p2;
@@ -1802,14 +1870,9 @@ function scoreGoal(scoringTeam) {
 
     setTimeout(() => { flash.hidden = true; }, 1700);
 
+    // the side that conceded kicks off, after everybody has jogged back (walkBack)
     STATE.kickoffTeam = scoringTeam === 1 ? 2 : 1;
-    setTimeout(() => {
-        positionForKickoff();
-        // also wipe stuck keys so a held shoot button doesn't fire on resume
-        Object.keys(keys).forEach(k => keys[k] = false);
-        STATE.scoring = false;
-        STATE.inputLocked = false;
-    }, 1400);
+    STATE.restartTicks = RESTART_TICKS;
 }
 
 function updateTimer() {

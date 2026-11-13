@@ -3,6 +3,50 @@
 // Stadium picker, preview and imported stadium rendering
 // =====================================================
 
+// ----------- STADIUM DOWNLOADS -----------
+// Each model is downloaded once and kept as raw bytes, so the picker, the
+// match and a rematch never fetch it twice. The chosen stadium starts
+// downloading as soon as the start screen is up, so it is usually there by
+// kick-off. Only the last few downloads are kept, to spare a phone's memory.
+const STADIUM_BYTES = new Map();      // file -> Promise<ArrayBuffer>
+const STADIUM_PROGRESS = new Map();   // file -> 0..1 while downloading
+const STADIUM_KEEP = 3;
+
+function fetchStadium(file) {
+    if (STADIUM_BYTES.has(file)) {
+        const p = STADIUM_BYTES.get(file);
+        STADIUM_BYTES.delete(file);           // most recently used goes last
+        STADIUM_BYTES.set(file, p);
+        return p;
+    }
+    STADIUM_PROGRESS.set(file, 0);
+    const p = new Promise((resolve, reject) => {
+        const loader = new THREE.FileLoader();
+        loader.setResponseType('arraybuffer');
+        loader.load(file,
+            (buf) => { STADIUM_PROGRESS.set(file, 1); resolve(buf); },
+            (ev) => { if (ev.lengthComputable && ev.total > 0) STADIUM_PROGRESS.set(file, ev.loaded / ev.total); },
+            (err) => { STADIUM_BYTES.delete(file); STADIUM_PROGRESS.delete(file); reject(err); });
+    });
+    STADIUM_BYTES.set(file, p);
+    while (STADIUM_BYTES.size > STADIUM_KEEP) STADIUM_BYTES.delete(STADIUM_BYTES.keys().next().value);
+    return p;
+}
+
+// A fresh copy of the model (the match changes its geometry, so it never
+// shares one with the picker).
+function loadStadiumModel(stadium) {
+    return fetchStadium(stadium.file).then((buf) => new Promise((resolve, reject) => {
+        const dir = stadium.file.slice(0, stadium.file.lastIndexOf('/') + 1);
+        new THREE.GLTFLoader().parse(buf, dir, resolve, reject);
+    }));
+}
+
+function preloadSelectedStadium() {
+    const st = getSelectedStadium();
+    if (st.file && typeof THREE.FileLoader === 'function') fetchStadium(st.file).catch(() => {});
+}
+
 // ----------- STADIUM PICKER -----------
 let stadiumPickerIdx = 0;
 
@@ -16,6 +60,7 @@ function bindStadium() {
         if (stadium) {
             setSelectedStadium(stadium.id);
             updateLaunchStadiumLabel();
+            preloadSelectedStadium();
         }
         history.back();
     });
@@ -286,20 +331,15 @@ const STADIUM_PREVIEW = (() => {
     function loadStadium(stadium) {
         if (cache.has(stadium.id)) return Promise.resolve(cache.get(stadium.id));
         if (inflight.has(stadium.id)) return inflight.get(stadium.id);
-        const p = new Promise((resolve, reject) => {
-            const loader = new THREE.GLTFLoader();
-            loader.load(stadium.file,
-                (gltf) => { const o = prepareModel(gltf, stadium); cache.set(stadium.id, o); resolve(o); },
-                (ev) => {
-                    // real download progress for the "Stadion laden" message
-                    if (!host || currentId !== stadium.id) return;
-                    if (ev.lengthComputable && ev.total > 0) {
-                        host.dataset.progress = Math.round((ev.loaded / ev.total) * 100) + '%';
-                    }
-                },
-                (err) => reject(err)
-            );
-        });
+        // real download progress for the "Stadion laden" message
+        const tick = setInterval(() => {
+            if (!host || currentId !== stadium.id) return;
+            const f = STADIUM_PROGRESS.get(stadium.file);
+            if (f !== undefined && f < 1) host.dataset.progress = Math.round(f * 100) + '%';
+        }, 200);
+        const p = loadStadiumModel(stadium)
+            .then((gltf) => { const o = prepareModel(gltf, stadium); cache.set(stadium.id, o); return o; })
+            .finally(() => clearInterval(tick));
         inflight.set(stadium.id, p);
         p.finally(() => inflight.delete(stadium.id));
         return p;
@@ -393,32 +433,41 @@ function usesStadiumPitch(stadium) {
 function buildStadium() {
     const stadium = getSelectedStadium();
     const token = ++stadiumLoadToken;
+    // play on the drawn pitch until the stadium (and its own grass) is in
     const ownPitch = scene.getObjectByName('own-pitch');
-    if (ownPitch) ownPitch.visible = !usesStadiumPitch(stadium);
+    if (ownPitch) ownPitch.visible = true;
     if (!stadium.file || !stadium.pitch || typeof THREE.GLTFLoader !== 'function') {
         buildStadiumFallback();
         return;
     }
 
-    new THREE.GLTFLoader().load(
-        stadium.file,
-        (gltf) => {
-            // a newer match (or leaving the match) makes this load stale
-            if (token !== stadiumLoadToken || STATE.screen !== 'playing') return;
-            const rig = fitStadiumToPitch(gltf.scene, stadium);
-            if (!stadium.pitch.own) levelStadiumPitch(rig);
-            dressStadium(rig, stadium);
-            rig.userData.tag = 'stadium';
-            scene.add(rig);
-        },
-        undefined,
-        (err) => {
-            console.warn(`stadium "${stadium.id}" (${stadium.file}) failed to load — using the plain surroundings`, err);
-            if (token !== stadiumLoadToken || STATE.screen !== 'playing') return;
-            if (ownPitch) ownPitch.visible = true;
-            buildStadiumFallback();
-        }
-    );
+    const badge = $('stadium-loading');
+    const pct = $('stadium-loading-pct');
+    const showProgress = () => {
+        const f = STADIUM_PROGRESS.get(stadium.file);
+        if (pct) pct.textContent = f === undefined || f >= 1 ? '' : Math.round(f * 100) + '%';
+    };
+    if (badge) badge.hidden = false;
+    showProgress();
+    const tick = setInterval(showProgress, 250);
+    const done = () => { clearInterval(tick); if (badge && token === stadiumLoadToken) badge.hidden = true; };
+
+    loadStadiumModel(stadium).then((gltf) => {
+        done();
+        // a newer match (or leaving the match) makes this load stale
+        if (token !== stadiumLoadToken || STATE.screen !== 'playing') return;
+        const rig = fitStadiumToPitch(gltf.scene, stadium);
+        if (!stadium.pitch.own) levelStadiumPitch(rig);
+        dressStadium(rig, stadium);
+        rig.userData.tag = 'stadium';
+        scene.add(rig);
+        if (ownPitch) ownPitch.visible = !usesStadiumPitch(stadium);
+    }).catch((err) => {
+        done();
+        console.warn(`stadium "${stadium.id}" (${stadium.file}) failed to load — using the plain surroundings`, err);
+        if (token !== stadiumLoadToken || STATE.screen !== 'playing') return;
+        buildStadiumFallback();
+    });
 }
 
 // Models come in every size and orientation, so each catalog entry says
@@ -484,9 +533,26 @@ function levelStadiumPitch(rig) {
     const meshes = [];
     const seen = new Set();
     rig.traverse((o) => {
-        const pos = o.isMesh && o.geometry && o.geometry.attributes.position;
-        if (!pos || pos.isInterleavedBufferAttribute || !(pos.array instanceof Float32Array) || seen.has(o.geometry)) return;
+        let pos = o.isMesh && o.geometry && o.geometry.attributes.position;
+        if (!pos || seen.has(o.geometry)) return;
         seen.add(o.geometry);
+        // the models store positions as 16-bit integers (KHR_mesh_quantization,
+        // to keep the downloads small), padded and so interleaved; turn them
+        // into a plain float attribute that can be read and flattened here
+        if (pos.isInterleavedBufferAttribute || !(pos.array instanceof Float32Array)) {
+            const arr = pos.isInterleavedBufferAttribute ? pos.data.array : pos.array;
+            const scale = !pos.normalized ? 1
+                : 1 / (arr instanceof Int16Array ? 32767 : arr instanceof Uint16Array ? 65535 : arr instanceof Int8Array ? 127 : 255);
+            const f = new Float32Array(pos.count * 3);
+            for (let i = 0; i < pos.count; i++) {
+                f[i * 3]     = Math.max(-1, pos.getX(i) * scale) || pos.getX(i) * scale;
+                f[i * 3 + 1] = Math.max(-1, pos.getY(i) * scale) || pos.getY(i) * scale;
+                f[i * 3 + 2] = Math.max(-1, pos.getZ(i) * scale) || pos.getZ(i) * scale;
+            }
+            if (!pos.normalized) for (let i = 0; i < pos.count; i++) { f[i*3] = pos.getX(i); f[i*3+1] = pos.getY(i); f[i*3+2] = pos.getZ(i); }
+            pos = new THREE.BufferAttribute(f, 3);
+            o.geometry.setAttribute('position', pos);
+        }
         meshes.push(o);
     });
 
