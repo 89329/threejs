@@ -527,10 +527,10 @@ kbd {
 .touch__btn--shoot {
     --charge: 0;
     isolation: isolate;
-    right: calc(env(safe-area-inset-right, 0px) + 28px);
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 88px);
-    width: 104px;
-    height: 104px;
+    right: calc(env(safe-area-inset-right, 0px) + 44px);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 132px);
+    width: 96px;
+    height: 96px;
     border: 0;
     background: conic-gradient(#fff calc(var(--charge) * 360deg), rgba(18, 21, 18, .55) 0);
     color: var(--ink);
@@ -546,14 +546,36 @@ kbd {
 }
 .touch__btn--pass {
     right: calc(env(safe-area-inset-right, 0px) + 146px);
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 22px);
-    width: 80px;
-    height: 80px;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
+    width: 78px;
+    height: 78px;
     border: 3px solid #fff;
     background: rgba(18, 21, 18, .55);
     color: #fff;
 }
 .touch__btn--pass.is-down { background: #fff; color: var(--ink); }
+/* Sprint: big, in the corner; its ring is the stamina left */
+.touch__btn--sprint {
+    --stamina: 1;
+    isolation: isolate;
+    right: calc(env(safe-area-inset-right, 0px) + 22px);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 18px);
+    width: 104px;
+    height: 104px;
+    border: 0;
+    background: conic-gradient(var(--yellow) calc(var(--stamina) * 360deg), rgba(18, 21, 18, .55) 0);
+    color: #fff;
+}
+.touch__btn--sprint::before {
+    content: '';
+    position: absolute;
+    inset: 6px;
+    z-index: -1;
+    border-radius: 50%;
+    background: rgba(18, 21, 18, .82);
+}
+.touch__btn--sprint.is-down::before { background: var(--ink); }
+.touch__btn--sprint.is-tired { background: conic-gradient(var(--red) calc(var(--stamina) * 360deg), rgba(18, 21, 18, .55) 0); }
 
 /* a phone held upright: ask to turn it (the match pauses, game.ui.js) */
 @media (orientation: portrait) {
@@ -1168,7 +1190,10 @@ kbd {
     .team-card__head { margin-bottom: 10px; }
     .field { margin-bottom: 10px; }
     .field__input { height: 56px; font-size: 24px; }
-    .keys > div { padding: 5px 0; }
+    .keys > div { padding: 3px 0; }
+    .menu kbd { min-width: 28px; height: 28px; }
+    .field__label { display: none; }            /* the placeholder already says whose name it is */
+    .team-card__head { margin-bottom: 6px; }
     .toss { margin: 10px 0 6px; }
     .toss__circle { width: clamp(190px, 21vw, 240px); }
     .coin-result { min-height: 70px; }

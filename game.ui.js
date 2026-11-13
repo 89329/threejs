@@ -372,12 +372,14 @@ function paintHud() {
     fillHudKeys($('hud-keys-p1'), STATE.p1, [
         [['W', 'A', 'S', 'D'], cpu ? 'of pijltjes' : 'bewegen'],
         [['Spatie'], 'schieten'],
-        [['Q'], 'terugspelen'],
+        [['Q'], 'passen'],
+        [['Shift'], 'sprinten'],
     ]);
     fillHudKeys($('hud-keys-p2'), STATE.p2, cpu ? [] : [
         [['↑', '←', '↓', '→'], 'bewegen'],
         [['Enter'], 'schieten'],
-        [['Shift'], 'terugspelen'],
+        [['Shift'], 'passen'],
+        [['Alt'], 'sprinten'],
     ], cpu ? `niveau ${getLevel().label.toLowerCase()}` : '');
 }
 
@@ -430,7 +432,7 @@ function resetTouch() {
     const stick = $('touch-stick'), knob = $('touch-knob');
     if (stick) { stick.style.left = ''; stick.style.top = ''; stick.classList.remove('is-held'); }
     if (knob) knob.style.transform = '';
-    ['touch-shoot', 'touch-pass'].forEach(id => $(id)?.classList.remove('is-down'));
+    ['touch-shoot', 'touch-pass', 'touch-sprint'].forEach(id => $(id)?.classList.remove('is-down'));
     $('touch-shoot')?.style.removeProperty('--charge');
 }
 
@@ -514,6 +516,8 @@ function bindTouch() {
         () => { chargeStart = performance.now(); cancelAnimationFrame(chargeRaf); paintCharge(); },
         () => { cancelAnimationFrame(chargeRaf); chargeRaf = 0; shoot.style.removeProperty('--charge'); });
     hold(pass, 'KeyQ');
+    const sprint = $('touch-sprint');
+    if (sprint) hold(sprint, 'ShiftLeft');
 
     // turning the phone upright mid-match pauses it
     if (window.matchMedia) {

@@ -7,7 +7,7 @@
 // the live site is actually serving the latest game.js. If this string
 // doesn't show up in DevTools console after a refresh, the browser /
 // GitHub Pages CDN is still serving an older cached copy.
-const GAME_BUILD = 'v83-touch (2026-11-13)';
+const GAME_BUILD = 'v86-teammates (2026-11-13)';
 console.log(`%c[GAME] build: ${GAME_BUILD}`,
     'background:#16a34a;color:#000;font-weight:bold;padding:3px 8px;border-radius:3px');
 
@@ -41,28 +41,32 @@ const STATE = {
 //   shootChance chance per tick of shooting once in range
 //   aim / miss  how far towards a post it aims, and its spread (units)
 //   power       its shot strength, as a part of the charge range [min, max]
+//   pass        chance per tick of passing to a teammate who is free and further forward
+//   sprint      0 = never sprints, 1 = sprints whenever chasing (35% faster, costs stamina)
 //   keeper      react: ticks before moving on a shot; lunge: dive speed;
 //               dive: extra reach at full stretch; shuffle: positioning speed
+// Every computer outfield player plays at the chosen level: the opponents
+// and your own computer teammate alike.
 const LEVEL_STORAGE_KEY = 'pitchRoyale.level';
 const LEVELS = {
     easy: {
         label: 'Makkelijk',
         desc: 'Speelt rustig, wint de bal zelden terug en de keeper laat er wat door.',
-        run: 0.82, press: 10, steal: 0.02, read: 0.06,
+        run: 0.82, press: 10, steal: 0.02, read: 0.06, pass: 0.006, sprint: 0,
         shootFrom: 24, shootChance: 0.014, aim: 0.12, miss: 12, power: [0.05, 0.4],
         keeper: { react: 13, lunge: 0.46, dive: 0.7, shuffle: 0.24 },
     },
     medium: {
         label: 'Gemiddeld',
         desc: 'Een eerlijke wedstrijd: zet druk en schiet als hij de kans krijgt.',
-        run: 1, press: 16, steal: 0.05, read: 0.10,
+        run: 1, press: 16, steal: 0.05, read: 0.10, pass: 0.014, sprint: 0.6,
         shootFrom: 30, shootChance: 0.025, aim: 0.24, miss: 9, power: [0.15, 0.65],
         keeper: { react: 7, lunge: 0.55, dive: 1.0, shuffle: 0.30 },
     },
     hard: {
         label: 'Moeilijk',
         desc: 'Snel, jaagt op de bal, schiet in de hoeken en de keeper houdt veel.',
-        run: 1.07, press: 24, steal: 0.09, read: 0.17,
+        run: 1.07, press: 24, steal: 0.09, read: 0.17, pass: 0.024, sprint: 1,
         shootFrom: 34, shootChance: 0.04, aim: 0.36, miss: 5, power: [0.4, 0.95],
         keeper: { react: 7, lunge: 0.6, dive: 1.3, shuffle: 0.34 },
     },
@@ -72,6 +76,9 @@ try {
     if (LEVELS[saved]) STATE.difficulty = saved;
 } catch (_) {}
 function getLevel() { return LEVELS[STATE.difficulty] || LEVELS.medium; }
+// the level the computer's outfield players play at: the chosen one against
+// the computer, medium for the computer teammates in a two-player match
+function aiLevel() { return STATE.mode === 'cpu' ? getLevel() : LEVELS.medium; }
 function setLevel(id) {
     if (!LEVELS[id]) return;
     STATE.difficulty = id;
